@@ -58,6 +58,34 @@ make demo
 
 Генерирует `demo.docx` из примера шаблона и контента.
 
+### С личными данными (statics/report.json)
+
+Заполните `statics/report.json` своими данными:
+
+```json
+{
+  "student": {
+    "full_name": "Иванов Иван Иванович"
+  },
+  "teacher": {
+    "full_name": "Петров Пётр Петрович",
+    "position": "доцент"
+  },
+  "format": "docx",
+  "template": "template.snj"
+}
+```
+
+Затем сгенерируйте документ:
+
+```bash
+# Формат и шаблон берутся из report.json
+make report ARGS="-b content.json -p report.docx"
+
+# Или переопределите формат через CLI
+make report ARGS="-b content.json -f pdf -p report.pdf"
+```
+
 ## Структура проекта
 
 ```
@@ -68,6 +96,7 @@ doc-tpu/
 │   ├── cli.py            # CLI (click)
 │   ├── content.py        # Загрузчик контента
 │   ├── template.py       # Загрузчик шаблонов
+│   ├── report.py         # Загрузчик report.json
 │   ├── errors.py         # Классы ошибок
 │   └── renderers/
 │       ├── base.py       # Абстрактный рендерер
@@ -77,8 +106,10 @@ doc-tpu/
 │   └── image1.png        # Логотип ТПУ
 ├── examples/
 │   └── content.json      # Пример контента
+├── statics/
+│   └── report.json       # Личные данные (ФИО, преподаватель)
 ├── template.snj          # Пример шаблона
-└── features.md           # Описание фичей
+└── SKILL.md              # Спецификация ТПУ
 ```
 
 ## Форматы файлов
@@ -121,6 +152,32 @@ JSON-файл, описывающий структуру документа:
   }
 }
 ```
+
+### Личные данные (report.json)
+
+JSON-файл в `statics/` с данными пользователя:
+
+```json
+{
+  "student": {
+    "full_name": "Иванов Иван Иванович"
+  },
+  "teacher": {
+    "full_name": "Петров Пётр Петрович",
+    "position": "доцент"
+  },
+  "format": "docx",
+  "template": "template.snj"
+}
+```
+
+| Поле | Описание |
+|------|----------|
+| `student.full_name` | ФИО студента (отображается на титульнике) |
+| `teacher.full_name` | ФИО преподавателя |
+| `teacher.position` | Должность преподавателя (доцент, профессор и т.д.) |
+| `format` | Формат по умолчанию: `docx`, `pdf` |
+| `template` | Путь к шаблону по умолчанию |
 
 ### Контент (.json)
 

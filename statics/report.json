@@ -1,0 +1,11 @@
+{
+  "student": {
+    "full_name": "Иванов Иван Иванович"
+  },
+  "teacher": {
+    "full_name": "Петров Пётр Петрович",
+    "position": "доцент"
+  },
+  "format": "docx",
+  "template": "template.snj"
+}

@@ -190,9 +190,25 @@ class DocxRenderer(Renderer):
             _text(doc, f"Вариант {variant}", WD_ALIGN_PARAGRAPH.CENTER)
 
         _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 6)
-        _text(doc, "Студент", WD_ALIGN_PARAGRAPH.LEFT)
+
+        # Студент (из report.json)
+        student_name = self.report.get("student", {}).get("full_name", "")
+        if student_name:
+            _text(doc, f"Студент                {student_name}", WD_ALIGN_PARAGRAPH.LEFT)
+        else:
+            _text(doc, "Студент", WD_ALIGN_PARAGRAPH.LEFT)
         _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 1)
-        _text(doc, "Преподаватель", WD_ALIGN_PARAGRAPH.LEFT)
+
+        # Преподаватель (из report.json)
+        teacher = self.report.get("teacher", {})
+        teacher_name = teacher.get("full_name", "")
+        teacher_pos = teacher.get("position", "")
+        if teacher_name and teacher_pos:
+            _text(doc, f"Преподаватель    {teacher_pos}    {teacher_name}", WD_ALIGN_PARAGRAPH.LEFT)
+        elif teacher_name:
+            _text(doc, f"Преподаватель    {teacher_name}", WD_ALIGN_PARAGRAPH.LEFT)
+        else:
+            _text(doc, "Преподаватель", WD_ALIGN_PARAGRAPH.LEFT)
         _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 1)
         _empty(doc, WD_ALIGN_PARAGRAPH.CENTER, 2)
 
@@ -349,7 +365,7 @@ class DocxRenderer(Renderer):
         return output_path
 
 
-def render_docx(template: dict, content: dict, output_path: str) -> str:
+def render_docx(template: dict, content: dict, output_path: str, report: dict | None = None) -> str:
     """Публичная функция для cli.py."""
-    renderer = DocxRenderer(template, content)
+    renderer = DocxRenderer(template, content, report=report)
     return renderer.render(output_path)

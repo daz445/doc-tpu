@@ -24,3 +24,6 @@ clean: ## Удалить сгенерированные файлы и venv
 
 demo: ## Сгенерировать демо-документ
 	$(BIN)/python -m $(SRC).cli -t template.snj -b examples/content.json -f docx -p demo.docx
+
+report: ## Сгенерировать с личными данными (make report ARGS="-b content.json -p output.docx")
+	$(BIN)/python -m $(SRC).cli -r statics/report.json $(ARGS)

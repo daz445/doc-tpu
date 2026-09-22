@@ -114,7 +114,7 @@ class PDFRenderer(Renderer):
         return output_path
 
 
-def render_pdf(template: dict, content: dict, output_path: str) -> str:
+def render_pdf(template: dict, content: dict, output_path: str, report: dict | None = None) -> str:
     """Публичная функция для cli.py."""
-    renderer = PDFRenderer(template, content)
+    renderer = PDFRenderer(template, content, report=report)
     return renderer.render(output_path)
