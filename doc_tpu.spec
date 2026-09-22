@@ -1,15 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller spec для doc-tpu — standalone бинарник."""
+from PyInstaller.utils.hooks import collect_data_files
 
 a = Analysis(
-    ['doc_tpu/cli.py'],
+    ['run.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('assets', 'assets'),
         ('statics', 'statics'),
         ('template.snj', '.'),
-    ],
+    ] + collect_data_files('docx', include_py_files=False),
     hiddenimports=[
         'click',
         'docx',
@@ -17,7 +18,6 @@ a = Analysis(
         'docx.opc.exceptions',
         'docx.opc.packuri',
         'docx.opc.part',
-        'docx.opc.parts.manifest',
         'docx.oxml',
         'docx.oxml.ns',
         'docx.shared',
@@ -31,7 +31,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['hook-docx.py'],
     excludes=[
         'tkinter',
         'matplotlib',
