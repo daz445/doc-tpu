@@ -1,4 +1,4 @@
-.PHONY: help venv install run clean demo
+.PHONY: help venv install run clean demo report build analyze
 
 PYTHON = python3
 SRC = doc_tpu
@@ -23,7 +23,16 @@ clean: ## Удалить сгенерированные файлы и venv
 	rm -rf $(VENV)
 
 demo: ## Сгенерировать демо-документ
-	$(BIN)/python -m $(SRC).cli -t template.snj -b examples/content.json -f docx -p demo.docx
+	$(BIN)/python -m $(SRC).cli generate -t template.snj -b examples/content.json -f docx -p demo.docx
 
 report: ## Сгенерировать с личными данными (make report ARGS="-b content.json -p output.docx")
-	$(BIN)/python -m $(SRC).cli -r statics/report.json $(ARGS)
+	$(BIN)/python -m $(SRC).cli generate -r statics/report.json $(ARGS)
+
+analyze: ## Проанализировать документ (make analyze FILE=template.docx)
+	$(BIN)/python -m $(SRC).cli analyze $(FILE)
+
+build: install ## Собрать standalone бинарник (make build)
+	$(BIN)/pip install pyinstaller
+	$(BIN)/pyinstaller doc_tpu.spec --clean --noconfirm
+	@echo "Бинарник: dist/doc-tpu"
+	@echo "Использование: ./dist/doc-tpu generate -b content.json -f docx -p output.docx"

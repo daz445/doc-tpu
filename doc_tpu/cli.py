@@ -10,8 +10,14 @@ from .report import load_report
 from .errors import DocTPUError
 
 
-@click.command()
+@click.group()
 @click.version_option(__version__, prog_name="doc-tpu")
+def main():
+    """doc-tpu — генератор отчётных документов ТПУ."""
+    pass
+
+
+@main.command()
 @click.option("-t", "--template", default=None, type=click.Path(exists=True),
               help="Путь к template.snj (иначе из report.json)")
 @click.option("-b", "--body", required=True, type=click.Path(exists=True),
@@ -25,14 +31,14 @@ from .errors import DocTPUError
               help="Пути до картинок (можно указать несколько)")
 @click.option("-r", "--report", default=None, type=click.Path(exists=True),
               help="Путь к statics/report.json с личными данными")
-def main(template, body, fmt, path, images, report):
-    """doc-tpu — генератор отчётных документов ТПУ.
+def generate(template, body, fmt, path, images, report):
+    """Сгенерировать документ из контента и шаблона.
 
     Пример:
 
-        doc-tpu -b content.json -r statics/report.json -p output.docx
+        doc-tpu generate -b content.json -r statics/report.json -p output.docx
 
-        doc-tpu -t template.snj -b content.json -f docx -p output.docx
+        doc-tpu generate -t template.snj -b content.json -f docx -p output.docx
     """
     # Загрузка report.json (если указан)
     report_data = None
@@ -88,6 +94,39 @@ def main(template, body, fmt, path, images, report):
         sys.exit(1)
 
     click.echo(f"Готово: {path}")
+
+
+@main.command()
+@click.argument("input_file", type=click.Path(exists=True))
+@click.option("-o", "--output", default=None,
+              help="Путь для сохранения .snj шаблона")
+def analyze(input_file, output):
+    """Проанализировать документ и извлечь стили как .snj шаблон.
+
+    Поддерживаемые форматы: .docx, .pptx
+
+    Пример:
+
+        doc-tpu analyze my_template.docx
+
+        doc-tpu analyze my_template.docx -o extracted.snj
+    """
+    from .analyzer import analyze as do_analyze, save_as_template
+
+    try:
+        result = do_analyze(input_file)
+    except Exception as e:
+        click.echo(f"Ошибка анализа: {e}", err=True)
+        sys.exit(1)
+
+    # Если указан output — сохраняем
+    if output:
+        save_as_template(result, output)
+        click.echo(f"Шаблон сохранён: {output}")
+    else:
+        # Иначе выводим в stdout
+        import json
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

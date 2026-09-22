@@ -7,7 +7,7 @@ CLI-генератор отчётных документов ТПУ (Томск�
 ## Установка
 
 ```bash
-git clone https://github.com/your-username/doc-tpu.git
+git clone https://github.com/daz445/doc-tpu.git
 cd doc-tpu
 make install
 ```
@@ -58,6 +58,46 @@ make demo
 
 Генерирует `demo.docx` из примера шаблона и контента.
 
+## Анализатор документов
+
+Извлекает стили, структуру и форматирование из существующих `.docx`/`.pptx` файлов и создаёт `.snj` шаблон.
+
+```bash
+# Анализ документа (вывод в stdout)
+doc-tpu analyze my_template.docx
+
+# Сохранить результат как .snj шаблон
+doc-tpu analyze my_template.docx -o extracted.snj
+
+# Или через Makefile
+make analyze FILE=my_template.docx
+```
+
+**Что извлекается:**
+- Поля страницы (отступы, размер, типографика)
+- Стили абзацев (шрифт, межстрочный интервал, выравнивание)
+- Титульная страница (школа, направление, отделение, дисциплина, город, год)
+- Логотип (наличие/отсутствие)
+
+**Поддерживаемые форматы:** `.docx`, `.pptx`
+
+## Сборка standalone-бинарника
+
+Компилирует всё в один исполняемый файл — не нужен Python, venv или pip:
+
+```bash
+make build
+```
+
+Бинарник появится в `dist/doc-tpu`. Использование:
+
+```bash
+./dist/doc-tpu generate -b content.json -r statics/report.json -p output.docx
+./dist/doc-tpu analyze template.snj -o my_template.snj
+```
+
+**Системные требования:** macOS, Python 3.10+ (для сборки)
+
 ### С личными данными (statics/report.json)
 
 Заполните `statics/report.json` своими данными:
@@ -97,6 +137,7 @@ doc-tpu/
 │   ├── content.py        # Загрузчик контента
 │   ├── template.py       # Загрузчик шаблонов
 │   ├── report.py         # Загрузчик report.json
+│   ├── analyzer.py       # Анализатор документов
 │   ├── errors.py         # Классы ошибок
 │   └── renderers/
 │       ├── base.py       # Абстрактный рендерер
@@ -109,6 +150,9 @@ doc-tpu/
 ├── statics/
 │   └── report.json       # Личные данные (ФИО, преподаватель)
 ├── template.snj          # Пример шаблона
+├── doc_tpu.spec          # PyInstaller spec
+├── dist/                 # Standalone бинарник (после build)
+│   └── doc-tpu
 └── SKILL.md              # Спецификация ТПУ
 ```
 
