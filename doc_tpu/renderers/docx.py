@@ -324,15 +324,6 @@ class DocxRenderer(Renderer):
                 if not rows_data:
                     continue
                 _table_counter += 1
-                caption = block.get("caption")
-                if caption:
-                    cap_p = doc.add_paragraph()
-                    cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    cap_p.paragraph_format.space_before = Pt(6)
-                    cap_p.paragraph_format.space_after = Pt(2)
-                    run = cap_p.add_run(f"Таб. {_table_counter} {caption}")
-                    run.font.name = font_family
-                    run.font.size = Pt(font_size)
                 num_cols = len(rows_data[0]) if rows_data else 0
                 table = doc.add_table(rows=len(rows_data), cols=num_cols)
                 table.style = "Table Grid"
@@ -353,6 +344,16 @@ class DocxRenderer(Renderer):
                                 for run in p.runs:
                                     run.font.name = font_family
                                     run.font.size = Pt(font_size)
+                # Caption AFTER table
+                caption = block.get("caption")
+                if caption:
+                    cap_p = doc.add_paragraph()
+                    cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap_p.paragraph_format.space_before = Pt(2)
+                    cap_p.paragraph_format.space_after = Pt(6)
+                    run = cap_p.add_run(f"Таб. {_table_counter} {caption}")
+                    run.font.name = font_family
+                    run.font.size = Pt(font_size)
 
             elif btype == "image":
                 source = block.get("source", "")

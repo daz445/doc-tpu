@@ -138,6 +138,7 @@ report/
 - Выравнивание абзацев: **по ширине** (JUSTIFY)
 - Отступ перед абзацем: **1.2** (space_before=Pt(1.2))
 - Списки: line_spacing=1.5
+- **Подписи таблиц** ("Таб. N ...") и **картинок** ("Рис. N ...") — **ПОД** объектом, по центру, шрифт TNR 14пт
 
 ## Формат .snj
 
@@ -398,24 +399,40 @@ def snj_to_docx(snj_data, output_path):
                     run.font.name = 'Times New Roman'
 
         elif btype == 'table':
-            headers = block.get('headers', [])
-            rows = block.get('rows', [])
-            table = doc.add_table(rows=len(rows) + 1, cols=len(headers))
-            table.style = 'Light Grid Accent 1'
-            for i, h_text in enumerate(headers):
-                cell = table.rows[0].cells[i]
-                cell.text = h_text
-                for p in cell.paragraphs:
-                    for run in p.runs:
-                        run.font.bold = True
-                        run.font.name = 'Times New Roman'
-            for r, row in enumerate(rows, 1):
-                for c, val in enumerate(row):
+            rows_data = block.get('content', [])
+            if not rows_data:
+                continue
+            _table_counter += 1
+            num_cols = len(rows_data[0]) if rows_data else 0
+            table = doc.add_table(rows=len(rows_data), cols=num_cols)
+            table.style = 'Table Grid'
+            for r, row in enumerate(rows_data):
+                for c, cell_data in enumerate(row):
                     cell = table.rows[r].cells[c]
-                    cell.text = val
-                    for p in cell.paragraphs:
-                        for run in p.runs:
+                    if isinstance(cell_data, dict):
+                        p = cell.paragraphs[0]
+                        for el in cell_data.get('elements', []):
+                            run = p.add_run(el.get('text', ''))
                             run.font.name = 'Times New Roman'
+                            run.font.size = Pt(14)
+                            if el.get('bold'):
+                                run.bold = True
+                    else:
+                        cell.text = str(cell_data)
+                        for p in cell.paragraphs:
+                            for run in p.runs:
+                                run.font.name = 'Times New Roman'
+                                run.font.size = Pt(14)
+            # Подпись ПОД таблицей
+            caption = block.get('caption')
+            if caption:
+                cap_p = doc.add_paragraph()
+                cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                cap_p.paragraph_format.space_before = Pt(2)
+                cap_p.paragraph_format.space_after = Pt(6)
+                run = cap_p.add_run(f'Таб. {_table_counter} {caption}')
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(14)
 
         elif btype == 'code':
             p = doc.add_paragraph()
@@ -446,10 +463,10 @@ def snj_to_docx(snj_data, output_path):
 | `heading` | `level` (1-6), `text` | Заголовок |
 | `paragraph` | `text` (string), **или** `elements` (массив) | Абзац. JUSTIFY, space_before=1.2 |
 | `list` | `list_type` ("numbered"/"bulleted"), `items` | Список |
-| `table` | `content` (двумерный массив ячеек) | Таблица |
+| `table` | `content` (двумерный массив ячеек), `caption?` | Таблица (стиль "Table Grid", подпись **под** таблицей: «Таб. N ...») |
 | `code` | `text` | Блок кода (Courier New 10пт) |
 | `quote` | `text`, `author?` | Цитата с отступом |
-| `image` | `source`, `alt_text?`, `width?`, `height?` | Картинка |
+| `image` | `source`, `alt_text?`, `width?`, `height?`, `caption?` | Картинка (подпись **под** картинкой: «Рис. N ...») |
 | `separator` | — | Пустая строка |
 
 ### Формат таблицы (важно!)
@@ -501,7 +518,7 @@ def snj_to_docx(snj_data, output_path):
       {"type": "list", "list_type": "numbered", "items": ["Пункт 1", "Пункт 2"]},
       {"type": "heading", "level": 1, "text": "2. Результаты"},
       {"type": "paragraph", "text": "Описание результатов."},
-      {"type": "table", "content": [
+      {"type": "table", "caption": "Название таблицы", "content": [
         [{"elements": [{"type": "text", "text": "Параметр", "bold": true}]},
          {"elements": [{"type": "text", "text": "Значение", "bold": true}]}],
         [{"elements": [{"type": "text", "text": "Метрика"}]},
@@ -520,6 +537,9 @@ def snj_to_docx(snj_data, output_path):
 - [ ] Body: line_spacing=1.5
 - [ ] Абзацы body: **JUSTIFY** (по ширине), space_before=1.2
 - [ ] Списки: line_spacing=1.5
+- [ ] **Подписи "Таб. N" — ПОД таблицами**
+- [ ] **Подписи "Рис. N" — ПОД картинками**
+- [ ] **Таблицы: стиль "Table Grid", заголовки bold, все поля заполнены**
 
 ## Шаблон
 При генерации `template.snj` копируется в `report/template.snj`. При необходимости редактируйте копию в `report/`.
