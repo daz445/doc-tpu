@@ -123,6 +123,18 @@ class DocxRenderer(Renderer):
     def render(self, output_path: str) -> str:
         tpl = self.template
         cover = tpl.get("content", {}).get("cover_page", {})
+        # Данные из static.json (report.lab) перезаписывают шаблон
+        lab = self.report.get("lab", {})
+        if lab.get("title"):
+            cover["title"] = lab["title"]
+        if lab.get("subtitle"):
+            cover["subtitle"] = lab["subtitle"]
+        if lab.get("discipline"):
+            cover["discipline"] = lab["discipline"]
+        if lab.get("variant"):
+            cover["variant"] = lab["variant"]
+        elif "variant" in lab and lab["variant"] == "":
+            cover["variant"] = ""
         has_toc = tpl.get("content", {}).get("table_of_contents", False)
 
         page = tpl.get("page_setup", {})
@@ -242,6 +254,8 @@ class DocxRenderer(Renderer):
         # ========================================================
         # СОДЕРЖИМОЕ
         # ========================================================
+        _image_counter = 0
+        _table_counter = 0
         for block in self.body:
             btype = block.get("type")
 
@@ -309,9 +323,19 @@ class DocxRenderer(Renderer):
                 rows_data = block.get("content", [])
                 if not rows_data:
                     continue
+                _table_counter += 1
+                caption = block.get("caption")
+                if caption:
+                    cap_p = doc.add_paragraph()
+                    cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap_p.paragraph_format.space_before = Pt(6)
+                    cap_p.paragraph_format.space_after = Pt(2)
+                    run = cap_p.add_run(f"Таб. {_table_counter} {caption}")
+                    run.font.name = font_family
+                    run.font.size = Pt(font_size)
                 num_cols = len(rows_data[0]) if rows_data else 0
                 table = doc.add_table(rows=len(rows_data), cols=num_cols)
-                table.style = "Light Grid Accent 1"
+                table.style = "Table Grid"
                 for r, row in enumerate(rows_data):
                     for c, cell_data in enumerate(row):
                         cell = table.rows[r].cells[c]
@@ -335,11 +359,31 @@ class DocxRenderer(Renderer):
                 if isinstance(source, dict):
                     source = source.get("path", "")
                 if source and os.path.exists(source):
+                    _image_counter += 1
+                    # Center image via a wrapper paragraph
+                    cap_p = doc.add_paragraph()
+                    cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    cap_p.paragraph_format.space_before = Pt(0)
+                    cap_p.paragraph_format.space_after = Pt(0)
+                    run = cap_p.add_run()
                     width = block.get("width")
-                    kwargs = {}
                     if width:
-                        kwargs["width"] = Pt(width)
-                    doc.add_picture(source, **kwargs)
+                        run.add_picture(source, width=Mm(width))
+                    else:
+                        run.add_picture(source)
+                    # Caption
+                    caption = block.get("caption")
+                    if caption:
+                        cap2 = doc.add_paragraph()
+                        cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        cap2.paragraph_format.space_before = Pt(2)
+                        cap2.paragraph_format.space_after = Pt(6)
+                        run2 = cap2.add_run(f"Рис. {_image_counter} {caption}")
+                        run2.font.name = font_family
+                        run2.font.size = Pt(font_size)
+                    else:
+                        cap2 = doc.add_paragraph()
+                        cap2.paragraph_format.space_after = Pt(6)
 
             elif btype == "code":
                 p = doc.add_paragraph()
