@@ -20,6 +20,18 @@ _TPU_LOGO = _PROJECT_ROOT / "assets" / "image1.png"
 # Вспомогательные функции
 # ============================================================
 
+def _to_initials(full_name: str) -> str:
+    """Конвертирует 'Фамилия Имя Отчество' → 'Фамилия И.О.'."""
+    parts = full_name.strip().split()
+    if len(parts) == 1:
+        return parts[0]
+    elif len(parts) == 2:
+        return f"{parts[0]} {parts[1][0]}."
+    elif len(parts) >= 3:
+        return f"{parts[0]} {parts[1][0]}.{parts[2][0]}."
+    return full_name
+
+
 def _add_page_number(section):
     """Номер страницы внизу по центру, TNR 10пт."""
     footer = section.footer
@@ -203,24 +215,73 @@ class DocxRenderer(Renderer):
 
         _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 6)
 
-        # Студент (из report.json)
-        student_name = self.report.get("student", {}).get("full_name", "")
-        if student_name:
-            _text(doc, f"Студент                {student_name}", WD_ALIGN_PARAGRAPH.LEFT)
-        else:
-            _text(doc, "Студент", WD_ALIGN_PARAGRAPH.LEFT)
-        _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 1)
-
-        # Преподаватель (из report.json)
+        # === ТАБЛИЦА СТУДЕНТ / ПРЕПОДАВАТЕЛЬ (без рамок, 3×3) ===
+        student_name = _to_initials(self.report.get("student", {}).get("full_name", ""))
         teacher = self.report.get("teacher", {})
-        teacher_name = teacher.get("full_name", "")
+        teacher_name = _to_initials(teacher.get("full_name", ""))
         teacher_pos = teacher.get("position", "")
-        if teacher_name and teacher_pos:
-            _text(doc, f"Преподаватель    {teacher_pos}    {teacher_name}", WD_ALIGN_PARAGRAPH.LEFT)
-        elif teacher_name:
-            _text(doc, f"Преподаватель    {teacher_name}", WD_ALIGN_PARAGRAPH.LEFT)
-        else:
-            _text(doc, "Преподаватель", WD_ALIGN_PARAGRAPH.LEFT)
+
+        title_table = doc.add_table(rows=3, cols=3)
+        # Убираем все рамки таблицы
+        tbl = title_table._tbl
+        tblPr = tbl.tblPr
+        existing_borders = tblPr.find(qn("w:tblBorders"))
+        if existing_borders is not None:
+            tblPr.remove(existing_borders)
+        borders = OxmlElement("w:tblBorders")
+        for bname in ["top", "left", "bottom", "right", "insideH", "insideV"]:
+            b = OxmlElement(f"w:{bname}")
+            b.set(qn("w:val"), "none")
+            b.set(qn("w:sz"), "0")
+            b.set(qn("w:space"), "0")
+            b.set(qn("w:color"), "auto")
+            borders.append(b)
+        tblPr.append(borders)
+
+        # Очищаем интервалы во всех ячейках
+        for row in title_table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    p.paragraph_format.space_before = None
+                    p.paragraph_format.space_after = Pt(0)
+                    p.paragraph_format.line_spacing = 1.0
+
+        # Row 1: Студент | (пусто) | ФИО студента
+        p = title_table.rows[0].cells[0].paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p.add_run("Студент")
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+
+        title_table.rows[0].cells[1].paragraphs[0].text = ""
+
+        p = title_table.rows[0].cells[2].paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run = p.add_run(student_name)
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+
+        # Row 2: пустая строка-разделитель
+        # (все ячейки пусты, строка просто визуально отделяет)
+
+        # Row 3: Преподаватель | Должность | ФИО преподавателя
+        p = title_table.rows[2].cells[0].paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p.add_run("Преподаватель")
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+
+        p = title_table.rows[2].cells[1].paragraphs[0]
+        run = p.add_run(teacher_pos)
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+
+        p = title_table.rows[2].cells[2].paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run = p.add_run(teacher_name)
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+
         _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 1)
         _empty(doc, WD_ALIGN_PARAGRAPH.CENTER, 2)
 

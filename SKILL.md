@@ -129,7 +129,12 @@ report/
 - P17: пустая CENTER
 - P18-P19: дисциплина/вариант CENTER
 - P20-P25: 6 пустых LEFT
-- P26-P29: Студент/пустая/Преподаватель/пустая LEFT
+- **P26: Таблица 3×3 без рамок** (студент / разделитель / преподаватель):
+  - Строка 1: "Студент" | (пусто) | ФИО (инициалами) — влево / вправо
+  - Строка 2: пустая строка-разделитель
+  - Строка 3: "Преподаватель" | Должность | ФИО (инициалами) — влево / вправо
+  - Все ячейки: TNR 14пт, line_spacing=1.0, без отступов
+  - ФИО конвертируются в инициалы: "Зыранов Дмитрий" → "Зыранов Д."
 - P30-P31: 2 пустых CENTER
 - P32: Томск – год CENTER
 
@@ -326,17 +331,58 @@ def snj_to_docx(snj_data, output_path):
     # P20-P25: 6 пустых LEFT
     _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 6)
 
-    # P26: Студент
-    _text(doc, 'Студент', WD_ALIGN_PARAGRAPH.LEFT)
+    # P26: ТАБЛИЦА СТУДЕНТ/ПРЕПОДАВАТЕЛЬ (без рамок, 3×3)
+    student_name = _to_initials(report.get('student', {}).get('full_name', ''))
+    teacher = report.get('teacher', {})
+    teacher_name = _to_initials(teacher.get('full_name', ''))
+    teacher_pos = teacher.get('position', '')
 
-    # P27: пустая LEFT
-    _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 1)
+    title_table = doc.add_table(rows=3, cols=3)
+    # Убираем рамки
+    tbl = title_table._tbl
+    tblPr = tbl.tblPr
+    existing_borders = tblPr.find(qn('w:tblBorders'))
+    if existing_borders is not None:
+        tblPr.remove(existing_borders)
+    borders = OxmlElement('w:tblBorders')
+    for bname in ['top', 'left', 'bottom', 'right', 'insideH', 'insideV']:
+        b = OxmlElement(f'w:{bname}')
+        b.set(qn('w:val'), 'none')
+        b.set(qn('w:sz'), '0')
+        b.set(qn('w:space'), '0')
+        b.set(qn('w:color'), 'auto')
+        borders.append(b)
+    tblPr.append(borders)
 
-    # P28: Преподаватель
-    _text(doc, 'Преподаватель', WD_ALIGN_PARAGRAPH.LEFT)
+    # Row 1: Студент | | ФИО (инициалы)
+    for p in title_table.rows[0].cells[0].paragraphs:
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p.add_run('Студент')
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+    for p in title_table.rows[0].cells[2].paragraphs:
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run = p.add_run(student_name)
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
 
-    # P29: пустая LEFT
-    _empty(doc, WD_ALIGN_PARAGRAPH.LEFT, 1)
+    # Row 2: пустая строка-разделитель
+
+    # Row 3: Преподаватель | Должность | ФИО (инициалы)
+    for p in title_table.rows[2].cells[0].paragraphs:
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = p.add_run('Преподаватель')
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+    for p in title_table.rows[2].cells[1].paragraphs:
+        run = p.add_run(teacher_pos)
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
+    for p in title_table.rows[2].cells[2].paragraphs:
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run = p.add_run(teacher_name)
+        run.font.name = font_family
+        run.font.size = Pt(font_size)
 
     # P30-P31: 2 пустых CENTER
     _empty(doc, WD_ALIGN_PARAGRAPH.CENTER, 2)
