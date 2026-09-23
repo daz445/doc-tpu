@@ -33,11 +33,21 @@ def _to_initials(full_name: str) -> str:
 
 
 def _add_page_number(section):
-    """Номер страницы внизу по центру, TNR 10пт."""
+    """Номер страницы справа внизу, TNR 10пт. Первая страница — без номера."""
+    # Первая страница: пустой футер (без номера)
+    section.different_first_page_header_footer = True
+    first_footer = section.first_page_footer
+    first_footer.is_linked_to_previous = False
+    if first_footer.paragraphs:
+        first_footer.paragraphs[0].clear()
+    else:
+        first_footer.add_paragraph()
+
+    # Основной футер: номер справа
     footer = section.footer
     footer.is_linked_to_previous = False
     p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     run = p.add_run()
     fc1 = OxmlElement("w:fldChar")
     fc1.set(qn("w:fldCharType"), "begin")

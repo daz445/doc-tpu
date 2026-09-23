@@ -145,6 +145,24 @@ report/
 - Списки: line_spacing=1.5
 - **Подписи таблиц** ("Таб. N ...") и **картинок** ("Рис. N ...") — **ПОД** объектом, по центру, шрифт TNR 14пт
 
+### Нумерация страниц
+- Номер страницы: **справа внизу**, TNR 10пт
+- **Первая страница (титульник) — без номера** (`different_first_page_header_footer = True`)
+
+### Список литературы (ГОСТ Р 7.0.100–2018)
+Все ссылки в `content.json` → `body` → `list` (последний пункт — "6. Список источников") должны быть отформатированы по ГОСТ Р 7.0.100–2018:
+
+**Форматы:**
+- **Книга:** `Фамилия, И. О. Название / И. О. Фамилия. – Город : Издательство, Год. – Число с.`
+- **Статья:** `Фамилия, И. О. Название статьи / И. О. Фамилия // Название журнала. – Год. – Т. X, № X. – С. X–X.`
+- **Электронный ресурс:** `Название : [Электронный ресурс]. – URL: https://... (дата обращения: ДД.ММ.ГГГГ).`
+- **ФЗ:** `Федеральный закон от ДД.ММ.ГГГГ № N-ФЗ «Название» : [Электронный ресурс]. – URL: ... (дата обращения: ДД.ММ.ГГГГ).`
+
+**Ключевые правила:**
+- Двоеточие перед `[Электронный ресурс]` — **двойное** (` : `)
+- Доступ оформляется как: `(дата обращения: ДД.ММ.ГГГГ).`
+- Точка в конце каждой записи **обязательна**
+
 ## Формат .snj
 
 ```json
@@ -185,11 +203,21 @@ _ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'assets')
 _TPU_LOGO = os.path.join(_ASSETS_DIR, 'image1.png')
 
 def _add_page_number(section):
-    """Номер страницы внизу по центру, TNR 10пт."""
+    """Номер страницы справа внизу, TNR 10пт. Первая страница — без номера."""
+    # Первая страница: пустой футер (без номера)
+    section.different_first_page_header_footer = True
+    first_footer = section.first_page_footer
+    first_footer.is_linked_to_previous = False
+    if first_footer.paragraphs:
+        first_footer.paragraphs[0].clear()
+    else:
+        first_footer.add_paragraph()
+
+    # Основной футер: номер справа
     footer = section.footer
     footer.is_linked_to_previous = False
     p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     run = p.add_run()
     fc1 = OxmlElement('w:fldChar')
     fc1.set(qn('w:fldCharType'), 'begin')
@@ -586,6 +614,8 @@ def snj_to_docx(snj_data, output_path):
 - [ ] **Подписи "Таб. N" — ПОД таблицами**
 - [ ] **Подписи "Рис. N" — ПОД картинками**
 - [ ] **Таблицы: стиль "Table Grid", заголовки bold, все поля заполнены**
+- [ ] **Нумерация страниц: справа, первая страница без номера**
+- [ ] **Список литературы: формат ГОСТ Р 7.0.100–2018**
 
 ## Шаблон
 При генерации `template.snj` копируется в `report/template.snj`. При необходимости редактируйте копию в `report/`.
