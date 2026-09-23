@@ -1,6 +1,7 @@
 """Рендерер .docx (python-docx)."""
 
 import os
+import re
 from pathlib import Path
 
 from docx import Document
@@ -19,6 +20,11 @@ _TPU_LOGO = _PROJECT_ROOT / "assets" / "image1.png"
 # ============================================================
 # Вспомогательные функции
 # ============================================================
+
+def _strip_heading_number(text: str) -> str:
+    """Убирает ведущую нумерацию: '1. Цель' → 'Цель', '3.1. Подготовка' → '3.1. Подготовка'."""
+    return re.sub(r"^\d+\.\s*", "", text)
+
 
 def _to_initials(full_name: str) -> str:
     """Конвертирует 'Фамилия Имя Отчество' → 'Фамилия И.О.'."""
@@ -192,8 +198,8 @@ class DocxRenderer(Renderer):
         for level in range(1, 7):
             hs = doc.styles[f"Heading {level}"]
             hs.font.name = font_family
-            hs.font.size = Pt(font_size)
-            hs.font.bold = None
+            hs.font.size = Pt(16) if level == 1 else Pt(font_size)
+            hs.font.bold = True if level == 1 else None
             hs.font.color.rgb = RGBColor(0, 0, 0)
 
         # ========================================================
@@ -331,7 +337,8 @@ class DocxRenderer(Renderer):
             btype = block.get("type")
 
             if btype == "heading":
-                h = doc.add_heading(block["text"], level=block.get("level", 1))
+                heading_text = _strip_heading_number(block["text"])
+                h = doc.add_heading(heading_text, level=block.get("level", 1))
                 for run in h.runs:
                     run.font.name = font_family
                     run.font.color.rgb = RGBColor(0, 0, 0)
@@ -376,7 +383,7 @@ class DocxRenderer(Renderer):
 
             elif btype == "list":
                 list_type = block.get("list_type", "bulleted")
-                for item in block.get("items", []):
+                for idx, item in enumerate(block.get("items", [])):
                     style_name = "List Number" if list_type == "numbered" else "List Bullet"
                     if isinstance(item, str):
                         p = doc.add_paragraph(item, style=style_name)
