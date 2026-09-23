@@ -48,7 +48,7 @@
     },
     {
       "type": "list",
-      "style": "numbered",
+      "list_type": "numbered",
       "items": [
         "Задача 1",
         "Задача 2",

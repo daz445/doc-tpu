@@ -1,0 +1,32 @@
+{
+  "document_type": "report",
+  "page_setup": {
+    "size": "A4",
+    "margins_mm": {
+      "top": 20.0,
+      "bottom": 20.0,
+      "left": 34.0,
+      "right": 15.0
+    },
+    "typography": {
+      "font_family": "Times New Roman",
+      "font_size_pt": 14.0,
+      "line_spacing": 1.5
+    }
+  },
+  "content": {
+    "cover_page": {
+      "has_logo": true,
+      "school": "Инженерная школа информационных технологий и робототехники",
+      "program": "Направление подготовки 09.03.04 Программная инженерия",
+      "department": "Отделение информационных технологий",
+      "title": "ЛАБОРАТОРНАЯ РАБОТА № 1",
+      "discipline": "Анализ, моделирование и оптимизация систем",
+      "variant": "6",
+      "city": "Томск",
+      "year": "2026"
+    },
+    "table_of_contents": false,
+    "body": []
+  }
+}
