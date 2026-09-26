@@ -470,6 +470,40 @@ class DocxRenderer(Renderer):
                 run.font.name = "Courier New"
                 run.font.size = Pt(10)
 
+            elif btype == "mermaid":
+                # Рендерим mermaid → PNG, вставляем как изображение
+                try:
+                    from ..mermaid import render_mermaid, is_mermaid_available
+                    if is_mermaid_available():
+                        png_path = render_mermaid(block["code"])
+                        _image_counter += 1
+                        cap_p = doc.add_paragraph()
+                        cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        run = cap_p.add_run()
+                        run.add_picture(png_path)
+                        # Caption для mermaid
+                        caption = block.get("caption")
+                        if caption:
+                            cap2 = doc.add_paragraph()
+                            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                            cap2.paragraph_format.space_before = Pt(2)
+                            cap2.paragraph_format.space_after = Pt(6)
+                            run2 = cap2.add_run(f"Рис. {_image_counter} {caption}")
+                            run2.font.name = font_family
+                            run2.font.size = Pt(font_size)
+                    else:
+                        # Fallback: вставляем как код
+                        p = doc.add_paragraph()
+                        run = p.add_run(block.get("code", ""))
+                        run.font.name = "Courier New"
+                        run.font.size = Pt(10)
+                except Exception:
+                    # Fallback при ошибке рендеринга
+                    p = doc.add_paragraph()
+                    run = p.add_run(block.get("code", ""))
+                    run.font.name = "Courier New"
+                    run.font.size = Pt(10)
+
             elif btype == "separator":
                 doc.add_paragraph()
 

@@ -1,0 +1,5 @@
+click
+python-docx
+fpdf2
+python-pptx
+mistune

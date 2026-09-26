@@ -21,7 +21,7 @@ def main():
 @click.option("-t", "--template", default=None, type=click.Path(exists=True),
               help="Путь к template.snj (иначе из report.json)")
 @click.option("-b", "--body", required=True, type=click.Path(exists=True),
-              help="Путь к content.json")
+              help="Путь к content.json или content.md")
 @click.option("-f", "--format", "fmt", default=None,
               type=click.Choice(["docx", "pdf", "pptx"]),
               help="Формат выходного файла (иначе из report.json)")
@@ -31,12 +31,14 @@ def main():
               help="Пути до картинок (можно указать несколько)")
 @click.option("-r", "--report", default=None, type=click.Path(exists=True),
               help="Путь к statics/report.json с личными данными")
-def generate(template, body, fmt, path, images, report):
+@click.option("-a", "--approve", is_flag=True, default=False,
+              help="Показать .md файл и запросить подтверждение перед генерацией")
+def generate(template, body, fmt, path, images, report, approve):
     """Сгенерировать документ из контента и шаблона.
 
     Пример:
 
-        doc-tpu generate -b content.json -r statics/report.json -p output.docx
+        doc-tpu generate -b content.md -r statics/report.json -p output.docx
 
         doc-tpu generate -t template.snj -b content.json -f docx -p output.docx
     """
@@ -77,6 +79,23 @@ def generate(template, body, fmt, path, images, report):
     except DocTPUError as e:
         click.echo(f"Ошибка: {e}", err=True)
         sys.exit(1)
+
+    # --approve: показываем .md и запрашиваем подтверждение
+    if approve:
+        import os
+        body_ext = os.path.splitext(body)[1].lower()
+        if body_ext == ".md":
+            md_text = open(body, encoding="utf-8").read()
+            click.echo("=" * 60)
+            click.echo("СОДЕРЖИМОЕ .md ФАЙЛА:")
+            click.echo("=" * 60)
+            click.echo(md_text)
+            click.echo("=" * 60)
+            if not click.confirm("Продолжить генерацию?"):
+                click.echo("Отменено.")
+                sys.exit(0)
+        else:
+            click.echo("Флаг --approve работает только с .md файлами.", err=True)
 
     # Подмешиваем картинки из --images в content
     if images:

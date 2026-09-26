@@ -1,4 +1,4 @@
-"""Загрузчик content.json."""
+"""Загрузчик контента (JSON или Markdown)."""
 
 import json
 from pathlib import Path
@@ -6,9 +6,12 @@ from .errors import ContentError
 
 
 def load_content(path: str) -> dict:
-    """Загрузить и валидировать content.json.
+    """Загрузить контент из .json или .md файла.
 
-    Ожидаемая структура::
+    Для .md файлов — парсит Markdown → блоки через md_parser.
+    Для .json файлов — загружает JSON как раньше.
+
+    Ожидаемая структура (JSON или результат парсинга MD)::
 
         {
           "content": {
@@ -27,6 +30,14 @@ def load_content(path: str) -> dict:
     if not p.exists():
         raise ContentError(f"Файл не найден: {path}")
 
+    # Markdown файл — парсим через md_parser
+    if p.suffix.lower() == ".md":
+        from .md_parser import parse_markdown
+        data = parse_markdown(p)
+        data["content"].setdefault("images", [])
+        return data
+
+    # JSON файл — загружаем как раньше
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:

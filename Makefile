@@ -13,7 +13,10 @@ venv: ## Создать виртуальное окружение
 	$(PYTHON) -m venv $(VENV)
 
 install: venv ## Установить зависимости
-	$(BIN)/pip install click python-docx fpdf2
+	$(BIN)/pip install -r requirements.txt
+
+install-mermaid: ## Установить Mermaid CLI (npm)
+	npm install -g @mermaid-js/mermaid-cli
 
 run: ## Запустить doc-tpu (make run ARGS="-t template.snj -b content.json -f docx -p out.docx")
 	$(BIN)/python -m $(SRC).cli $(ARGS)
