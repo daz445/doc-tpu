@@ -3,3 +3,4 @@ python-docx
 fpdf2
 python-pptx
 mistune
+flask>=3.0

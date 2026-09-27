@@ -148,5 +148,22 @@ def analyze(input_file, output):
         click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
+@main.command()
+@click.argument("report_dir", type=click.Path(exists=True), default=".")
+@click.option("--port", default=0, type=int, help="Порт сервера (0 = авто)")
+@click.option("--no-open", is_flag=True, default=False, help="Не открывать браузер")
+def preview(report_dir, port, no_open):
+    """Запустить web-сервер предпросмотра и редактирования отчёта.
+
+    Пример:
+
+        doc-tpu preview report/
+
+        doc-tpu preview . --port 8080
+    """
+    from .server.app import run_server
+    run_server(report_dir, port=port, open_browser=not no_open)
+
+
 if __name__ == "__main__":
     main()

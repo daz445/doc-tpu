@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>doc-tpu — Предпросмотр отчёта</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <!-- Панель инструментов -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <h1>📄 Предпросмотр отчёта</h1>
+        </div>
+        <div class="toolbar-right">
+            <button id="btn-save" class="btn btn-save" title="Сохранить изменения">💾 Сохранить</button>
+            <button id="btn-export" class="btn btn-export" title="Экспорт в .docx">📥 Экспорт .docx</button>
+        </div>
+    </div>
+
+    <!-- Основной контент -->
+    <div class="page-container">
+        <!-- Титульная страница -->
+        <div id="cover-page" class="cover-page paper">
+            <div class="cover-logo">
+                <img src="" alt="Логотип ТПУ" id="tpu-logo" style="display:none">
+                <div class="logo-border"></div>
+            </div>
+            <div class="cover-school" id="cover-school"></div>
+            <div class="cover-program" id="cover-program"></div>
+            <div class="cover-department" id="cover-department"></div>
+            <div class="cover-spacer"></div>
+            <div class="cover-title" id="cover-title"></div>
+            <div class="cover-subtitle" id="cover-subtitle"></div>
+            <div class="cover-discipline" id="cover-discipline"></div>
+            <div class="cover-variant" id="cover-variant"></div>
+            <div class="cover-spacer-small"></div>
+            <div class="cover-table" id="cover-table"></div>
+            <div class="cover-spacer-small"></div>
+            <div class="cover-footer" id="cover-footer"></div>
+        </div>
+
+        <!-- Тело отчёта: редактируемые блоки -->
+        <div class="body-section paper">
+            <div id="blocks-container" class="blocks-container">
+                <div class="loading">Загрузка блоков...</div>
+            </div>
+            <div class="add-block-bar">
+                <button id="btn-add-block" class="btn btn-add" title="Добавить блок">+ Добавить блок</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: добавление блока -->
+    <div id="modal-add" class="modal" style="display:none">
+        <div class="modal-content">
+            <h3>Добавить блок</h3>
+            <div class="block-types">
+                <button data-type="paragraph" class="type-btn">📝 Параграф</button>
+                <button data-type="heading" class="type-btn">📌 Заголовок</button>
+                <button data-type="list" class="type-btn">📋 Список</button>
+                <button data-type="table" class="type-btn">📊 Таблица</button>
+                <button data-type="code" class="type-btn">💻 Код</button>
+                <button data-type="mermaid" class="type-btn">📈 Диаграмма</button>
+                <button data-type="quote" class="type-btn">💬 Цитата</button>
+                <button data-type="separator" class="type-btn">➖ Разделитель</button>
+            </div>
+            <button class="btn btn-cancel" onclick="closeModal()">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно: уведомление -->
+    <div id="toast" class="toast" style="display:none"></div>
+
+    <script src="editor.js"></script>
+    <script src="export.js"></script>
+</body>
+</html>

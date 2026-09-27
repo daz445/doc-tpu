@@ -50,6 +50,18 @@ cp ${CLAUDE_PLUGIN_ROOT}/assets/image1.png report/images/image1.png
 cd report && PYTHONPATH=${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe -m doc_tpu generate -b content.md -r static.json -p report.docx
 ```
 
+### Шаг 5.5: Предпросмотр (опционально)
+Если пользователь хочет проверить и отредактировать отчёт перед финальной генерацией:
+```bash
+cd report && PYTHONPATH=${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe -m doc_tpu preview .
+```
+Показать ссылку пользователю: "Открой для предпросмотра: http://127.0.0.1:PORT"
+На странице можно:
+- Просмотреть отчёт в стиле ТПУ (как в Word)
+- Перетаскивать и редактировать блоки
+- Редактировать mermaid-диаграммы (клик по диаграмме)
+- Экспортировать в .docx
+
 ### Шаг 6: Сообщить пользователю
 Готово! Файл: `report/report.docx`
 
