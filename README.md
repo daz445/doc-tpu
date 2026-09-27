@@ -4,276 +4,123 @@ CLI-генератор отчётных документов ТПУ (Томск�
 
 Генерирует `.docx` и `.pdf` файлы с **точной копией** титульной страницы ТПУ, включая логотип с нижней границей.
 
-## Установка
+## Установка как плагин Claude Code
+
+```bash
+claude plugin install https://github.com/daz445/doc-tpu
+```
+
+После установки доступна команда `/doc-tpu` и автоматическая активация скилла при запросе генерации отчёта ТПУ.
+
+## Установка как CLI
 
 ```bash
 git clone https://github.com/daz445/doc-tpu.git
 cd doc-tpu
+pip install .
+```
+
+Или через Makefile (создаёт venv):
+
+```bash
 make install
 ```
 
-Это создаст виртуальное окружение и установит зависимости.
-
 ## Использование
 
-### Базовый синтаксис
+### Генерация документа
 
 ```bash
-make run ARGS="-t template.snj -b content.json -f docx -p output.docx"
+doc-tpu generate -b content.md -r statics/report.json -p output.docx
 ```
 
 ### Флаги
 
 | Флаг | Описание |
 |------|----------|
-| `-t, --template` | Путь к файлу шаблона `.snj` |
-| `-b, --body` | Путь к файлу контента `.json` |
-| `-f, --format` | Формат вывода: `docx`, `pdf` |
-| `-p, --path` | Путь для сохранения результата |
-| `-i, --images` | Пути к изображениям (опционально) |
-| `--help` | Справка |
+| `-b, --body` | Путь к файлу контента `.md` или `.json` |
+| `-r, --report` | Путь к `static.json` с личными данными |
+| `-t, --template` | Путь к `.snj` шаблону (иначе из report.json) |
+| `-f, --format` | Формат: `docx`, `pdf` (иначе из report.json) |
+| `-p, --path` | Путь для выходного файла |
+| `-i, --images` | Пути к изображениям (можно несколько) |
 
-### Примеры
+### Анализатор документов
 
-**Генерация docx:**
-```bash
-make run ARGS="-t template.snj -b examples/content.json -f docx -p report.docx"
-```
-
-**Генерация pdf:**
-```bash
-make run ARGS="-t template.snj -b examples/content.json -f pdf -p report.pdf"
-```
-
-**С изображениями:**
-```bash
-make run ARGS="-t template.snj -b content.json -f docx -p report.docx -i photo1.png -i photo2.png"
-```
-
-### Демо-генерация
+Извлекает стили из существующих `.docx`/`.pptx` файлов:
 
 ```bash
-make demo
-```
-
-Генерирует `demo.docx` из примера шаблона и контента.
-
-## Анализатор документов
-
-Извлекает стили, структуру и форматирование из существующих `.docx`/`.pptx` файлов и создаёт `.snj` шаблон.
-
-```bash
-# Анализ документа (вывод в stdout)
 doc-tpu analyze my_template.docx
-
-# Сохранить результат как .snj шаблон
 doc-tpu analyze my_template.docx -o extracted.snj
-
-# Или через Makefile
-make analyze FILE=my_template.docx
 ```
 
-**Что извлекается:**
-- Поля страницы (отступы, размер, типографика)
-- Стили абзацев (шрифт, межстрочный интервал, выравнивание)
-- Титульная страница (школа, направление, отделение, дисциплина, город, год)
-- Логотип (наличие/отсутствие)
-
-**Поддерживаемые форматы:** `.docx`, `.pptx`
-
-## Сборка standalone-бинарника
-
-Компилирует всё в один исполняемый файл — не нужен Python, venv или pip:
+### Через Makefile
 
 ```bash
-make build
-```
-
-Бинарник появится в `dist/doc-tpu`. Использование:
-
-```bash
-./dist/doc-tpu generate -b content.json -r statics/report.json -p output.docx
-./dist/doc-tpu analyze template.snj -o my_template.snj
-```
-
-**Системные требования:** macOS, Python 3.10+ (для сборки)
-
-### С личными данными (statics/report.json)
-
-Заполните `statics/report.json` своими данными:
-
-```json
-{
-  "student": {
-    "full_name": "Иванов Иван Иванович"
-  },
-  "teacher": {
-    "full_name": "Петров Пётр Петрович",
-    "position": "доцент"
-  },
-  "format": "docx",
-  "template": "template.snj"
-}
-```
-
-Затем сгенерируйте документ:
-
-```bash
-# Формат и шаблон берутся из report.json
-make report ARGS="-b content.json -p report.docx"
-
-# Или переопределите формат через CLI
-make report ARGS="-b content.json -f pdf -p report.pdf"
+make run ARGS="-b content.md -r statics/report.json -p report.docx"
+make demo                                  # Демо-генерация
+make analyze FILE=template.docx            # Анализ документа
+make build                                 # Standalone бинарник
 ```
 
 ## Структура проекта
 
 ```
 doc-tpu/
-├── Makefile              # Точка входа
-├── doc_tpu/
-│   ├── __init__.py
-│   ├── cli.py            # CLI (click)
-│   ├── content.py        # Загрузчик контента
-│   ├── template.py       # Загрузчик шаблонов
-│   ├── report.py         # Загрузчик report.json
-│   ├── analyzer.py       # Анализатор документов
-│   ├── errors.py         # Классы ошибок
+├── .claude-plugin/          # Манифест плагина Claude Code
+│   └── plugin.json
+├── skills/doc-tpu/          # Скилл для Claude Code
+│   ├── SKILL.md
+│   ├── template.snj
+│   └── assets/image1.png
+├── commands/
+│   └── doc-tpu.md           # Slash-команда /doc-tpu
+├── doc_tpu/                 # Python-пакет
+│   ├── cli.py               # CLI (click)
+│   ├── content.py           # Загрузчик контента (.md/.json)
+│   ├── template.py          # Загрузчик шаблонов (.snj)
+│   ├── report.py            # Загрузчик report.json
+│   ├── analyzer.py          # Анализатор документов
+│   ├── errors.py            # Классы ошибок
 │   └── renderers/
-│       ├── base.py       # Абстрактный рендерер
-│       ├── docx.py       # Рендерер .docx (python-docx)
-│       └── pdf.py        # Рендерер .pdf (fpdf2)
-├── assets/
-│   └── image1.png        # Логотип ТПУ
+│       ├── docx.py          # Рендерер .docx
+│       └── pdf.py           # Рендерер .pdf
 ├── examples/
-│   └── content.json      # Пример контента
+│   └── content.md           # Пример контента
 ├── statics/
-│   └── report.json       # Личные данные (ФИО, преподаватель)
-├── template.snj          # Пример шаблона
-├── doc_tpu.spec          # PyInstaller spec
-├── dist/                 # Standalone бинарник (после build)
-│   └── doc-tpu
-└── SKILL.md              # Спецификация ТПУ
+│   └── report.json          # Личные данные (ФИО, преподаватель)
+├── template.snj             # Шаблон титульной страницы
+├── setup.py                 # Установка через pip
+├── Makefile
+└── requirements.txt
 ```
 
 ## Форматы файлов
 
-### Шаблон (.snj)
+### Контент (content.md)
 
-JSON-файл, описывающий структуру документа:
-
-```json
-{
-  "document_type": "report",
-  "page_setup": {
-    "size": "A4",
-    "margins_mm": {
-      "top": 20,
-      "bottom": 20,
-      "left": 34,
-      "right": 15
-    },
-    "typography": {
-      "font_family": "Times New Roman",
-      "font_size_pt": 14,
-      "line_spacing": 1.5
-    }
-  },
-  "content": {
-    "cover_page": {
-      "school": "Инженерная школа информационных технологий и робототехники",
-      "program": "Направление подготовки 09.03.04 Программная инженерия",
-      "department": "Отделение информационных технологий",
-      "title": "ЛАБОРАТОРНАЯ РАБОТА № 1",
-      "subtitle": "МОДЕЛИРОВАНИЕ ПРОСТЕЙШИХ СИСТЕМ В ARENA",
-      "discipline": "Анализ, моделирование и оптимизация систем",
-      "variant": "6",
-      "city": "Томск",
-      "year": "2026"
-    },
-    "table_of_contents": false,
-    "body": [...]
-  }
-}
-```
+Markdown-файл с телом отчёта. Поддерживаются заголовки, абзацы, списки, таблицы, код, цитаты, картинки.
 
 ### Личные данные (report.json)
 
-JSON-файл в `statics/` с данными пользователя:
-
 ```json
 {
-  "student": {
-    "full_name": "Иванов Иван Иванович"
-  },
-  "teacher": {
-    "full_name": "Петров Пётр Петрович",
-    "position": "доцент"
-  },
+  "student": { "full_name": "Иванов Иван Иванович" },
+  "teacher": { "full_name": "Петров Пётр Петрович", "position": "доцент" },
+  "group": "РИ-230901",
   "format": "docx",
   "template": "template.snj"
 }
 ```
 
-| Поле | Описание |
-|------|----------|
-| `student.full_name` | ФИО студента (отображается на титульнике) |
-| `teacher.full_name` | ФИО преподавателя |
-| `teacher.position` | Должность преподавателя (доцент, профессор и т.д.) |
-| `format` | Формат по умолчанию: `docx`, `pdf` |
-| `template` | Путь к шаблону по умолчанию |
+### Шаблон (.snj)
 
-### Контент (.json)
-
-JSON-файл с блоками контента:
-
-```json
-{
-  "content": {
-    "body": [
-      {
-        "type": "heading",
-        "level": 1,
-        "text": "1. Цель работы"
-      },
-      {
-        "type": "paragraph",
-        "text": "Описание цели работы."
-      },
-      {
-        "type": "list",
-        "list_type": "numbered",
-        "items": ["Задача 1", "Задача 2"]
-      },
-      {
-        "type": "table",
-        "content": [
-          [{"elements": [{"type": "text", "text": "Параметр", "bold": true}]}],
-          [{"elements": [{"type": "text", "text": "Значение"}]}]
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Типы блоков
-
-| Тип | Описание |
-|-----|----------|
-| `heading` | Заголовок (уровень 1-6) |
-| `paragraph` | Абзац текста (с поддержкой bold/italic) |
-| `list` | Список (numbered/bulleted) |
-| `table` | Таблица |
-| `image` | Изображение |
-| `code` | Блок кода |
-| `quote` | Цитата |
-| `separator` | Разделитель |
+JSON-файл, описывающий структуру документа (поля страницы, титульная страница, стили).
 
 ## Требования
 
 - Python 3.10+
-- macOS (для PDF с кириллицей — системные шрифты Times New Roman)
+- Windows / macOS / Linux
 
 ## Лицензия
 
