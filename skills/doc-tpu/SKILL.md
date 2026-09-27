@@ -20,8 +20,8 @@ mkdir -p report/images
 
 ### Шаг 2: Скопировать шаблон и логотип из скилла
 ```bash
-cp ${CLAUDE_PLUGIN_ROOT}/skills/doc-tpu/template.snj report/template.snj
-cp ${CLAUDE_PLUGIN_ROOT}/skills/doc-tpu/assets/image1.png report/images/image1.png
+cp ${CLAUDE_PLUGIN_ROOT}/template.snj report/template.snj
+cp ${CLAUDE_PLUGIN_ROOT}/assets/image1.png report/images/image1.png
 ```
 
 ### Шаг 3: Заполнить static.json
@@ -47,7 +47,7 @@ cp ${CLAUDE_PLUGIN_ROOT}/skills/doc-tpu/assets/image1.png report/images/image1.p
 
 ### Шаг 5: Сгенерировать
 ```bash
-cd report && PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python -m doc_tpu generate -b content.md -r static.json -p report.docx
+cd report && PYTHONPATH=${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe -m doc_tpu generate -b content.md -r static.json -p report.docx
 ```
 
 ### Шаг 6: Сообщить пользователю

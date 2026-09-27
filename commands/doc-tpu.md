@@ -19,5 +19,5 @@ allowed-tools: [Bash, Read, Write, Glob, Grep, AskUserQuestion]
 3. Следуй workflow из скилла: создай папку report/, скопируй шаблон и логотип, собери данные у пользователя, сгенерируй документ.
 4. Команда генерации:
    ```bash
-   cd report && PYTHONPATH=${CLAUDE_PLUGIN_ROOT} python -m doc_tpu generate -b content.md -r static.json -p report.docx
+   cd report && PYTHONPATH=${CLAUDE_PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe -m doc_tpu generate -b content.md -r static.json -p report.docx
    ```
