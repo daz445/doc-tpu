@@ -42,7 +42,6 @@ def generate(template, body, fmt, path, images, report, approve):
 
         doc-tpu generate -t template.snj -b content.json -f docx -p output.docx
     """
-    # Загрузка report.json (если указан)
     report_data = None
     if report:
         try:
@@ -51,7 +50,6 @@ def generate(template, body, fmt, path, images, report, approve):
             click.echo(f"Ошибка: {e}", err=True)
             sys.exit(1)
 
-    # Определение шаблона: CLI флаг > report.json > ошибка
     if template is None:
         if report_data and report_data.get("template"):
             template = report_data["template"]
@@ -59,7 +57,6 @@ def generate(template, body, fmt, path, images, report, approve):
             click.echo("Ошибка: укажите --template или --report с полем template", err=True)
             sys.exit(1)
 
-    # Определение формата: CLI флаг > report.json > ошибка
     if fmt is None:
         if report_data and report_data.get("format"):
             fmt = report_data["format"]
@@ -67,7 +64,6 @@ def generate(template, body, fmt, path, images, report, approve):
             click.echo("Ошибка: укажите --format или --report с полем format", err=True)
             sys.exit(1)
 
-    # Определение пути: если не указан — генерируем из имени контента
     if path is None:
         import os
         base = os.path.splitext(os.path.basename(body))[0]
@@ -80,7 +76,6 @@ def generate(template, body, fmt, path, images, report, approve):
         click.echo(f"Ошибка: {e}", err=True)
         sys.exit(1)
 
-    # --approve: показываем .md и запрашиваем подтверждение
     if approve:
         import os
         body_ext = os.path.splitext(body)[1].lower()
@@ -97,11 +92,9 @@ def generate(template, body, fmt, path, images, report, approve):
         else:
             click.echo("Флаг --approve работает только с .md файлами.", err=True)
 
-    # Подмешиваем картинки из --images в content
     if images:
         content["images"] = list(images)
 
-    # Выбор рендерера
     if fmt == "docx":
         from .renderers.docx import render_docx
         render_docx(tpl, content, path, report=report_data)
@@ -122,12 +115,9 @@ def generate(template, body, fmt, path, images, report, approve):
 def analyze(input_file, output):
     """Проанализировать документ и извлечь стили как .snj шаблон.
 
-    Поддерживаемые форматы: .docx, .pptx
-
     Пример:
 
         doc-tpu analyze my_template.docx
-
         doc-tpu analyze my_template.docx -o extracted.snj
     """
     from .analyzer import analyze as do_analyze, save_as_template
@@ -138,12 +128,10 @@ def analyze(input_file, output):
         click.echo(f"Ошибка анализа: {e}", err=True)
         sys.exit(1)
 
-    # Если указан output — сохраняем
     if output:
         save_as_template(result, output)
         click.echo(f"Шаблон сохранён: {output}")
     else:
-        # Иначе выводим в stdout
         import json
         click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
@@ -152,17 +140,45 @@ def analyze(input_file, output):
 @click.argument("report_dir", type=click.Path(exists=True), default=".")
 @click.option("--port", default=0, type=int, help="Порт сервера (0 = авто)")
 @click.option("--no-open", is_flag=True, default=False, help="Не открывать браузер")
-def preview(report_dir, port, no_open):
-    """Запустить web-сервер предпросмотра и редактирования отчёта.
+@click.option("--close", "close_id", default=None, help="Закрыть сессию по ID")
+@click.option("--status", is_flag=True, default=False, help="Показать активные сессии")
+def preview(report_dir, port, no_open, close_id, status):
+    """Запустить web-сервер предпросмотра с мультисессионной поддержкой.
 
-    Пример:
-
-        doc-tpu preview report/
-
-        doc-tpu preview . --port 8080
+    \b
+    Примеры:
+        doc-tpu preview report/          — создать сессию и открыть
+        doc-tpu preview --status         — показать активные сессии
+        doc-tpu preview --close ses-XXX  — закрыть сессию
     """
-    from .server.app import run_server
-    run_server(report_dir, port=port, open_browser=not no_open)
+    from .server.app import (
+        run_server, deploy_session, sync_session_to_report,
+        close_session, _load_sessions, _get_session_dir,
+    )
+
+    # --status: показать сессии
+    if status:
+        sessions = _load_sessions()
+        if not sessions:
+            click.echo("Нет активных сессий.")
+            return
+        click.echo("Активные сессии:")
+        for sid, info in sessions.items():
+            import time
+            ts = time.strftime("%H:%M:%S", time.localtime(info["created"]))
+            click.echo(f"  {sid}  (создана {ts})  → {info['report_dir']}")
+        return
+
+    # --close: закрыть сессию
+    if close_id:
+        if close_session(close_id):
+            click.echo(f"Сессия {close_id} закрыта. Изменения синхронизированы.")
+        else:
+            click.echo(f"Сессия {close_id} не найдена.", err=True)
+        return
+
+    # Обычный preview: deploy сессии и запуск сервера
+    run_server(report_dir=report_dir, port=port, open_browser=not no_open)
 
 
 if __name__ == "__main__":

@@ -1,17 +1,26 @@
 /* ═══════════════════════════════════════════════════════════
    doc-tpu: Редактор блоков (drag-and-drop, inline-edit)
+   Session-aware: API через /api/ses-<id>/...
    ═══════════════════════════════════════════════════════════ */
 
 let blocks = [];
 let sortable = null;
+let SESSION_ID = "";  // "ses-XXXX" — из URL
+
+// ── Определение сессии из URL ───────────────────────────────
+
+function detectSession() {
+    const m = window.location.pathname.match(/^\/ses-([a-f0-9]+)/);
+    if (m) SESSION_ID = `ses-${m[1]}`;
+}
 
 // ── Загрузка блоков ──────────────────────────────────────
 
 async function loadBlocks() {
     try {
         const [blocksResp, staticResp] = await Promise.all([
-            fetch("/api/blocks"),
-            fetch("/api/static"),
+            fetch(`/api/${SESSION_ID}/blocks`),
+            fetch(`/api/${SESSION_ID}/static`),
         ]);
 
         if (!blocksResp.ok) throw new Error("Ошибка загрузки блоков");
@@ -45,7 +54,6 @@ function renderCoverPage(data) {
     setText("cover-discipline", cover.discipline ? `по дисциплине ${cover.discipline}` : "");
     setText("cover-variant", cover.variant ? `Вариант ${cover.variant}` : "");
 
-    // Таблица студент/преподаватель
     const sName = toInitials(student.full_name || "");
     const tName = toInitials(teacher.full_name || "");
     const tPos = teacher.position || "";
@@ -66,10 +74,8 @@ function renderCoverPage(data) {
         </table>`;
     document.getElementById("cover-table").innerHTML = tableHTML;
 
-    const group = data.group || "";
-    const city = "Томск";
     const year = new Date().getFullYear();
-    setText("cover-footer", `${city} – ${year}`);
+    setText("cover-footer", `Томск – ${year}`);
 }
 
 function setText(id, text) {
@@ -96,7 +102,6 @@ function renderBlocks() {
         container.appendChild(el);
     });
 
-    // Рендерим mermaid-диаграммы
     renderMermaidBlocks();
 }
 
@@ -106,7 +111,6 @@ function createBlockElement(block, index) {
     div.dataset.index = index;
     div.dataset.type = block.type;
 
-    // Controls
     const controls = document.createElement("div");
     controls.className = "block-controls";
     controls.innerHTML = `
@@ -115,7 +119,6 @@ function createBlockElement(block, index) {
     `;
     div.appendChild(controls);
 
-    // Содержимое блока
     const content = document.createElement("div");
     content.className = `block-content block-${block.type}`;
 
@@ -196,7 +199,6 @@ function createBlockElement(block, index) {
 
     div.appendChild(content);
 
-    // Обработка изменений contenteditable
     div.addEventListener("focusout", (e) => {
         if (e.target.classList.contains("block-editable")) {
             updateBlockFromEdit(index, e.target);
@@ -211,7 +213,6 @@ function renderTable(block) {
     if (rows.length === 0) return "<p>Пустая таблица</p>";
 
     let html = "<table>";
-
     rows.forEach((row, ri) => {
         html += "<tr>";
         row.forEach(cell => {
@@ -230,13 +231,11 @@ function renderTable(block) {
         });
         html += "</tr>";
     });
-
     html += "</table>";
 
     if (block.caption) {
         html += `<div class="caption">${escapeHtml(block.caption)}</div>`;
     }
-
     return html;
 }
 
@@ -245,10 +244,10 @@ function renderTable(block) {
 function renderMermaidBlocks() {
     if (typeof mermaid !== "undefined") {
         mermaid.initialize({ startOnLoad: false, theme: "default" });
-        document.querySelectorAll(".mermaid-render .mermaid").forEach(async (el, i) => {
+        document.querySelectorAll(".mermaid-render .mermaid").forEach(async (el) => {
             try {
                 const code = el.textContent;
-                const id = `mermaid-${i}-${Date.now()}`;
+                const id = `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
                 const { svg } = await mermaid.render(id, code);
                 el.innerHTML = svg;
             } catch (e) {
@@ -269,7 +268,6 @@ function initSortable() {
         animation: 200,
         ghostClass: "dragging",
         onEnd: (evt) => {
-            // Обновляем массив блоков
             const [moved] = blocks.splice(evt.oldIndex, 1);
             blocks.splice(evt.newIndex, 0, moved);
             renderBlocks();
@@ -293,7 +291,6 @@ function updateBlockFromEdit(blockIndex, el) {
         const itemIndex = parseInt(el.dataset.itemIndex);
         if (block.items) block.items[itemIndex] = text;
     } else if (field === "elements") {
-        // Упрощённо: сохраняем как plain text
         block.text = text;
         delete block.elements;
     }
@@ -323,8 +320,7 @@ document.getElementById("btn-add-block").addEventListener("click", openAddModal)
 
 document.querySelectorAll(".type-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-        const type = btn.dataset.type;
-        addBlock(type);
+        addBlock(btn.dataset.type);
         closeModal();
     });
 });
@@ -374,13 +370,14 @@ function addBlock(type) {
 // ── Редактор диаграмм ────────────────────────────────────
 
 function openDiagramEditor(blockIndex) {
-    // Находим mermaid-блок по индексу
+    // Ищем mermaid-блок: blockIndex — индекс блока, но нумерация
+    // диаграмм ведётся только по mermaid-блокам
     let mermaidIdx = 0;
     for (let i = 0; i < blocks.length; i++) {
         if (blocks[i].type === "mermaid") {
-            if (mermaidIdx === blockIndex) {
-                // Открываем отдельную страницу редактора
-                window.open(`/diagram/${mermaidIdx}`, "_blank");
+            if (i === parseInt(blockIndex)) {
+                // Открываем в новой вкладке: /ses-XXXX/diagram/N
+                window.open(`/ses-${SESSION_ID.slice(4)}/diagram/${mermaidIdx}`, "_blank");
                 return;
             }
             mermaidIdx++;
@@ -415,4 +412,7 @@ function showToast(message, type = "success") {
 
 // ── Инициализация ────────────────────────────────────────
 
-document.addEventListener("DOMContentLoaded", loadBlocks);
+document.addEventListener("DOMContentLoaded", () => {
+    detectSession();
+    loadBlocks();
+});

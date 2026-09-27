@@ -23,3 +23,7 @@ build/
 
 # Claude
 .claude/
+
+# Preview server sessions
+doc_tpu/server/sessions/
+.last-update-check

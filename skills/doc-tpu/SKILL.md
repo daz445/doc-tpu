@@ -82,13 +82,25 @@ cd report && "${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe" -m doc_tpu generat
 
 ### Шаг 5.5: Предпросмотр (если пользователь хочет проверить)
 ```bash
-cd report && PYTHONPATH="${CLAUDE_PLUGIN_ROOT}" "${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe" -m doc_tpu preview .
+PYTHONPATH="${CLAUDE_PLUGIN_ROOT}" "${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe" -m doc_tpu preview "$(pwd)/report"
 ```
-Покажи ссылку: `http://127.0.0.1:PORT`
+Команда создаст **сессию** с уникальным ID и выведет URL вида:
+`http://127.0.0.1:PORT/ses-XXXXXXXXXXXX/`
+
+Важно:
+- Запускай **в фоне** (сервер работает постоянно)
+- ID сессии сохраняется в `report/.session`
+- Сервер мультисессионный: повторные запуски добавляют сессии, не конфликтуют
+- После редактирования в браузере — синхронизируй изменения обратно:
+```bash
+PYTHONPATH="${CLAUDE_PLUGIN_ROOT}" "${CLAUDE_PLUGIN_ROOT}/.venv/Scripts/python.exe" -m doc_tpu preview --close ses-XXXX
+```
+(`--close` копирует изменения из temp в `report/` и удаляет сессию)
+
 На странице можно:
 - Просмотреть отчёт в стиле ТПУ
 - Перетаскивать и редактировать блоки
-- Редактировать mermaid-диаграммы
+- Редактировать mermaid-диаграммы (клик по диаграмме → отдельный редактор)
 - Экспортировать в .docx
 
 ### Шаг 6: Сообщить пользователю

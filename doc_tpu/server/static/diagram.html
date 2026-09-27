@@ -6,36 +6,11 @@
     <title>doc-tpu — Редактор диаграммы</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: "Segoe UI", sans-serif;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            background: #1a1a2e;
-        }
-
-        /* ── Верхняя панель ──────────────────────────────── */
-        .topbar {
-            height: 48px;
-            background: #16213e;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            flex-shrink: 0;
-        }
+        body { font-family: "Segoe UI", sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a2e; }
+        .topbar { height: 48px; background: #16213e; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
         .topbar-left { display: flex; align-items: center; gap: 12px; }
         .topbar-right { display: flex; gap: 8px; }
-
-        .btn {
-            padding: 6px 14px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 11pt;
-            transition: background 0.2s;
-        }
+        .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 11pt; transition: background 0.2s; }
         .btn-back { background: #6c757d; color: #fff; }
         .btn-back:hover { background: #5a6268; }
         .btn-save { background: #2d6a4f; color: #fff; }
@@ -45,91 +20,20 @@
         .btn-mode { background: #495057; color: #fff; }
         .btn-mode:hover { background: #343a40; }
         .btn-mode.active { background: #e67e22; }
-
-        /* ── Основная область ─────────────────────────────── */
-        .main-area {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        /* ── Визуальный редактор (Excalidraw) ─────────────── */
-        #visual-editor {
-            flex: 1;
-            position: relative;
-        }
-        #excalidraw-container {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* ── Кодовый режим ────────────────────────────────── */
-        #code-editor {
-            flex: 1;
-            display: none;
-            flex-direction: row;
-        }
+        .main-area { flex: 1; display: flex; overflow: hidden; }
+        #visual-editor { flex: 1; position: relative; }
+        #excalidraw-container { width: 100%; height: 100%; }
+        #code-editor { flex: 1; display: none; flex-direction: row; }
         #code-editor.active { display: flex; }
         #visual-editor.hidden { display: none; }
-
-        .code-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #333;
-        }
-        .code-panel h3 {
-            padding: 8px 12px;
-            background: #0f3460;
-            color: #fff;
-            font-size: 11pt;
-        }
-        .code-panel textarea {
-            flex: 1;
-            background: #1e1e1e;
-            color: #d4d4d4;
-            border: none;
-            padding: 12px;
-            font-family: "Courier New", monospace;
-            font-size: 12pt;
-            resize: none;
-            outline: none;
-        }
-
-        .preview-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .preview-panel h3 {
-            padding: 8px 12px;
-            background: #0f3460;
-            color: #fff;
-            font-size: 11pt;
-        }
-        .preview-panel .preview-content {
-            flex: 1;
-            padding: 16px;
-            background: #fff;
-            overflow: auto;
-            text-align: center;
-        }
+        .code-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #333; }
+        .code-panel h3 { padding: 8px 12px; background: #0f3460; color: #fff; font-size: 11pt; }
+        .code-panel textarea { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 12px; font-family: "Courier New", monospace; font-size: 12pt; resize: none; outline: none; }
+        .preview-panel { flex: 1; display: flex; flex-direction: column; }
+        .preview-panel h3 { padding: 8px 12px; background: #0f3460; color: #fff; font-size: 11pt; }
+        .preview-panel .preview-content { flex: 1; padding: 16px; background: #fff; overflow: auto; text-align: center; }
         .preview-panel svg { max-width: 100%; height: auto; }
-
-        /* ── Toast ────────────────────────────────────────── */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #333;
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 11pt;
-            z-index: 3000;
-            display: none;
-        }
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 11pt; z-index: 3000; display: none; }
         .toast.success { background: #2d6a4f; }
         .toast.error { background: #e74c3c; }
     </style>
@@ -137,7 +41,7 @@
 <body>
     <div class="topbar">
         <div class="topbar-left">
-            <button class="btn btn-back" onclick="window.location.href='/'">← Назад к отчёту</button>
+            <button class="btn btn-back" id="btn-back">← Назад к отчёту</button>
             <span id="diagram-title">Диаграмма #0</span>
         </div>
         <div class="topbar-right">
@@ -146,7 +50,6 @@
             <button class="btn btn-save" onclick="saveDiagram()">💾 Сохранить</button>
         </div>
     </div>
-
     <div class="main-area">
         <div id="visual-editor">
             <div id="excalidraw-container"></div>
@@ -163,195 +66,129 @@
             </div>
         </div>
     </div>
-
     <div class="toast" id="toast"></div>
-
     <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
     <script>
         let blockId = 0;
         let currentCode = "";
         let excalidrawData = null;
         let isCodeMode = false;
+        let SESSION_ID = "";  // "ses-XXXX"
 
-        // ── Инициализация ─────────────────────────────────────
+        function detectSession() {
+            const path = window.location.pathname;
+            // URL: /ses-XXXX/diagram/N
+            const m = path.match(/^\/ses-([a-f0-9]+)/);
+            if (m) SESSION_ID = `ses-${m[1]}`;
+            const parts = path.split("/");
+            blockId = parseInt(parts[parts.length - 1]) || 0;
+        }
 
         async function init() {
-            // Получаем block_id из URL
-            const pathParts = window.location.pathname.split("/");
-            blockId = parseInt(pathParts[pathParts.length - 1]) || 0;
-
+            detectSession();
             document.getElementById("diagram-title").textContent = `Диаграмма #${blockId}`;
+            document.getElementById("btn-back").onclick = () => {
+                window.location.href = `/ses-${SESSION_ID.slice(4)}/`;
+            };
 
-            // Загружаем данные диаграммы
             try {
-                const resp = await fetch(`/api/diagram/${blockId}`);
+                const resp = await fetch(`/api/${SESSION_ID}/diagram/${blockId}`);
                 if (!resp.ok) throw new Error("Диаграмма не найдена");
                 const data = await resp.json();
-
                 currentCode = data.code || "";
                 excalidrawData = data.excalidraw_data;
-
                 document.getElementById("mermaid-code").value = currentCode;
-
-                // Инициализируем mermaid
                 mermaid.initialize({ startOnLoad: false, theme: "default" });
-
-                // Показываем превью в кодовом режиме
                 previewMermaid();
-
-                // Если есть excalidraw данные — показываем визуальный редактор
-                // (Excalidraw загружается динамически)
                 loadExcalidraw();
-
             } catch (e) {
                 showToast(`Ошибка: ${e.message}`, "error");
             }
         }
 
-        // ── Excalidraw ────────────────────────────────────────
-
         async function loadExcalidraw() {
-            // Excalidraw загружается как React-компонент через UMD
-            // Для простоты используем встроенный редактор через mermaid
-            // Визуальный режим показывает mermaid-превью
-            const container = document.getElementById("excalidraw-container");
-            container.innerHTML = `
-                <div style="display:flex;height:100%">
-                    <div style="flex:1;padding:20px;background:#fff;overflow:auto;text-align:center">
-                        <div id="visual-mermaid-preview"></div>
-                    </div>
-                </div>`;
-
+            const c = document.getElementById("excalidraw-container");
+            c.innerHTML = '<div style="display:flex;height:100%"><div style="flex:1;padding:20px;background:#fff;overflow:auto;text-align:center"><div id="visual-mermaid-preview"></div></div></div>';
             renderVisualPreview();
         }
 
         async function renderVisualPreview() {
-            const previewEl = document.getElementById("visual-mermaid-preview");
-            if (!previewEl || !currentCode) return;
-
+            const el = document.getElementById("visual-mermaid-preview");
+            if (!el || !currentCode) return;
             try {
-                const id = `mermaid-visual-${Date.now()}`;
-                const { svg } = await mermaid.render(id, currentCode);
-                previewEl.innerHTML = svg;
+                const { svg } = await mermaid.render(`mv-${Date.now()}`, currentCode);
+                el.innerHTML = svg;
             } catch (e) {
-                previewEl.innerHTML = `<p style="color:red;padding:20px">Ошибка mermaid:<br>${e.message}</p>`;
+                el.innerHTML = `<p style="color:red;padding:20px">Ошибка:<br>${e.message}</p>`;
             }
         }
-
-        // ── Кодовый режим ─────────────────────────────────────
 
         function toggleMode() {
             isCodeMode = !isCodeMode;
             const btn = document.getElementById("btn-toggle-mode");
-
             if (isCodeMode) {
                 document.getElementById("visual-editor").classList.add("hidden");
                 document.getElementById("code-editor").classList.add("active");
-                btn.textContent = "🎨 Визуальный";
-                btn.classList.add("active");
+                btn.textContent = "🎨 Визуальный"; btn.classList.add("active");
                 previewMermaid();
             } else {
                 document.getElementById("visual-editor").classList.remove("hidden");
                 document.getElementById("code-editor").classList.remove("active");
-                btn.textContent = "📝 Код";
-                btn.classList.remove("active");
+                btn.textContent = "📝 Код"; btn.classList.remove("active");
                 renderVisualPreview();
             }
         }
 
         async function previewMermaid() {
             const code = document.getElementById("mermaid-code").value;
-            const previewEl = document.getElementById("mermaid-preview");
-
-            if (!code.trim()) {
-                previewEl.innerHTML = "<p style='color:#999'>Введите mermaid-код</p>";
-                return;
-            }
-
+            const el = document.getElementById("mermaid-preview");
+            if (!code.trim()) { el.innerHTML = "<p style='color:#999'>Введите mermaid-код</p>"; return; }
             try {
-                const id = `mermaid-code-${Date.now()}`;
-                const { svg } = await mermaid.render(id, code);
-                previewEl.innerHTML = svg;
+                const { svg } = await mermaid.render(`mc-${Date.now()}`, code);
+                el.innerHTML = svg;
             } catch (e) {
-                previewEl.innerHTML = `<p style="color:red">Ошибка: ${e.message}</p>`;
+                el.innerHTML = `<p style="color:red">Ошибка: ${e.message}</p>`;
             }
         }
-
-        // ── Сохранение ────────────────────────────────────────
 
         async function saveDiagram() {
-            // Если в кодовом режиме — берём код из textarea
-            if (isCodeMode) {
-                currentCode = document.getElementById("mermaid-code").value;
-            }
-
+            if (isCodeMode) currentCode = document.getElementById("mermaid-code").value;
             try {
-                const resp = await fetch(`/api/diagram/${blockId}`, {
+                const resp = await fetch(`/api/${SESSION_ID}/diagram/${blockId}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        code: currentCode,
-                        excalidraw_data: excalidrawData,
-                    }),
+                    body: JSON.stringify({ code: currentCode, excalidraw_data: excalidrawData }),
                 });
-
-                if (!resp.ok) {
-                    const err = await resp.json();
-                    throw new Error(err.error || "Ошибка сохранения");
-                }
-
+                if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || "Ошибка"); }
                 showToast("✅ Диаграмма сохранена", "success");
-
-                // Обновляем превью
                 renderVisualPreview();
-            } catch (e) {
-                showToast(`❌ ${e.message}`, "error");
-            }
+            } catch (e) { showToast(`❌ ${e.message}`, "error"); }
         }
-
-        // ── Экспорт SVG ───────────────────────────────────────
 
         async function exportSVG() {
             try {
-                const code = isCodeMode
-                    ? document.getElementById("mermaid-code").value
-                    : currentCode;
-
-                const resp = await fetch(`/api/diagram/${blockId}/export`, {
+                const code = isCodeMode ? document.getElementById("mermaid-code").value : currentCode;
+                const resp = await fetch(`/api/${SESSION_ID}/diagram/${blockId}/export`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ code, format: "svg" }),
                 });
-
                 if (!resp.ok) throw new Error("Ошибка экспорта");
-
                 const blob = await resp.blob();
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
-                a.href = url;
-                a.download = `diagram-${blockId}.svg`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                a.href = url; a.download = `diagram-${blockId}.svg`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-
                 showToast("✅ SVG скачан", "success");
-            } catch (e) {
-                showToast(`❌ ${e.message}`, "error");
-            }
+            } catch (e) { showToast(`❌ ${e.message}`, "error"); }
         }
 
-        // ── Toast ─────────────────────────────────────────────
-
-        function showToast(message, type = "success") {
-            const toast = document.getElementById("toast");
-            toast.textContent = message;
-            toast.className = `toast ${type}`;
-            toast.style.display = "block";
-            setTimeout(() => { toast.style.display = "none"; }, 3000);
+        function showToast(msg, type = "success") {
+            const t = document.getElementById("toast");
+            t.textContent = msg; t.className = `toast ${type}`; t.style.display = "block";
+            setTimeout(() => { t.style.display = "none"; }, 3000);
         }
-
-        // ── Запуск ────────────────────────────────────────────
 
         document.addEventListener("DOMContentLoaded", init);
     </script>

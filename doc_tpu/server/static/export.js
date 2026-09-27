@@ -1,12 +1,16 @@
 /* ═══════════════════════════════════════════════════════════
    doc-tpu: Экспорт и сохранение
+   Session-aware: SESSION_ID из editor.js (глобальная)
+   API: /api/ses-<id>/...
    ═══════════════════════════════════════════════════════════ */
+
+// SESSION_ID определён в editor.js (глобальная переменная)
 
 // ── Сохранить блоки → content.md ─────────────────────────
 
 document.getElementById("btn-save").addEventListener("click", async () => {
     try {
-        const resp = await fetch("/api/blocks", {
+        const resp = await fetch(`/api/${SESSION_ID}/blocks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(blocks),
@@ -28,20 +32,19 @@ document.getElementById("btn-save").addEventListener("click", async () => {
 document.getElementById("btn-export").addEventListener("click", async () => {
     try {
         // Сначала сохраняем
-        await fetch("/api/blocks", {
+        await fetch(`/api/${SESSION_ID}/blocks`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(blocks),
         });
 
         // Затем экспортируем
-        const resp = await fetch("/api/export/docx");
+        const resp = await fetch(`/api/${SESSION_ID}/export/docx`);
         if (!resp.ok) {
             const err = await resp.json();
             throw new Error(err.error || "Ошибка экспорта");
         }
 
-        // Скачиваем файл
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -61,12 +64,10 @@ document.getElementById("btn-export").addEventListener("click", async () => {
 // ── Горячие клавиши ──────────────────────────────────────
 
 document.addEventListener("keydown", (e) => {
-    // Ctrl+S — сохранить
     if (e.ctrlKey && e.key === "s") {
         e.preventDefault();
         document.getElementById("btn-save").click();
     }
-    // Ctrl+E — экспорт
     if (e.ctrlKey && e.key === "e") {
         e.preventDefault();
         document.getElementById("btn-export").click();
