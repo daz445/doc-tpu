@@ -1,0 +1,16 @@
+{
+  "description": "Auto-update hook for doc-tpu plugin — checks GitHub for updates once per 24 hours",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/update-check.py\"",
+            "timeout": 35
+          }
+        ]
+      }
+    ]
+  }
+}
