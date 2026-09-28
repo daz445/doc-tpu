@@ -5,7 +5,8 @@
 
 let blocks = [];
 let sortable = null;
-let SESSION_ID = "";  // "ses-XXXX" — из URL
+let SESSION_ID = "";      // "ses-XXXX" — из URL
+let diagramsMap = {};     // {idx: {png_base64}} — отредактированные диаграммы
 
 // ── Определение сессии из URL ───────────────────────────────
 
@@ -18,9 +19,10 @@ function detectSession() {
 
 async function loadBlocks() {
     try {
-        const [blocksResp, staticResp] = await Promise.all([
+        const [blocksResp, staticResp, diagramsResp] = await Promise.all([
             fetch(`/api/${SESSION_ID}/blocks`),
             fetch(`/api/${SESSION_ID}/static`),
+            fetch(`/api/${SESSION_ID}/diagrams`),
         ]);
 
         if (!blocksResp.ok) throw new Error("Ошибка загрузки блоков");
@@ -29,6 +31,7 @@ async function loadBlocks() {
         blocks = data.content?.body || [];
 
         const staticData = staticResp.ok ? await staticResp.json() : {};
+        if (diagramsResp.ok) diagramsMap = await diagramsResp.json();
 
         renderCoverPage(staticData);
         renderBlocks();
@@ -165,11 +168,19 @@ function createBlockElement(block, index) {
             content.className += " block-mermaid";
             content.dataset.blockIndex = index;
             content.onclick = () => openDiagramEditor(index);
+            // Номер диаграммы среди mermaid-блоков
+            let mermaidNum = 0;
+            for (let k = 0; k < index; k++) {
+                if (blocks[k] && blocks[k].type === "mermaid") mermaidNum++;
+            }
+            // Если есть отредактированная версия (PNG из Excalidraw) — показываем её
+            const edited = diagramsMap[String(mermaidNum)];
+            const inner = edited && edited.png_base64
+                ? `<img src="data:image/png;base64,${edited.png_base64}" alt="Диаграмма (отредактировано)" style="max-width:100%">`
+                : `<pre class="mermaid">${escapeHtml(block.code || "")}</pre>`;
             content.innerHTML = `
-                <div class="mermaid-label">📊 Диаграмма — кликните для редактирования</div>
-                <div class="mermaid-render" data-mermaid-index="${index}">
-                    <pre class="mermaid">${escapeHtml(block.code || "")}</pre>
-                </div>`;
+                <div class="mermaid-label">📊 Диаграмма — кликните для редактирования${edited ? " ✏️" : ""}</div>
+                <div class="mermaid-render" data-mermaid-index="${index}">${inner}</div>`;
             break;
 
         case "quote":

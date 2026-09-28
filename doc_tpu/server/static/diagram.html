@@ -7,25 +7,32 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Segoe UI", sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a2e; }
-        .topbar { height: 48px; background: #16213e; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
+        .topbar { height: 48px; background: #16213e; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; z-index: 100; }
         .topbar-left { display: flex; align-items: center; gap: 12px; }
-        .topbar-right { display: flex; gap: 8px; }
+        .topbar-right { display: flex; gap: 8px; align-items: center; }
+        .status-dot { font-size: 9pt; opacity: .85; }
+        .status-dot.ok { color: #7ee787; }
+        .status-dot.warn { color: #f0b429; }
         .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 11pt; transition: background 0.2s; }
         .btn-back { background: #6c757d; color: #fff; }
         .btn-back:hover { background: #5a6268; }
         .btn-save { background: #2d6a4f; color: #fff; }
         .btn-save:hover { background: #40916c; }
+        .btn-save:disabled { background: #405d4d; cursor: wait; }
         .btn-export { background: #0077b6; color: #fff; }
         .btn-export:hover { background: #0096c7; }
         .btn-mode { background: #495057; color: #fff; }
         .btn-mode:hover { background: #343a40; }
         .btn-mode.active { background: #e67e22; }
         .main-area { flex: 1; display: flex; overflow: hidden; }
-        #visual-editor { flex: 1; position: relative; }
+        #visual-editor { flex: 1; position: relative; background: #fff; }
         #excalidraw-container { width: 100%; height: 100%; }
+        #visual-editor.hidden { display: none; }
+        .load-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #f0f0f0; color: #666; font-size: 12pt; z-index: 10; flex-direction: column; gap: 12px; }
+        .spinner { width: 32px; height: 32px; border: 3px solid #ccc; border-top-color: #e67e22; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         #code-editor { flex: 1; display: none; flex-direction: row; }
         #code-editor.active { display: flex; }
-        #visual-editor.hidden { display: none; }
         .code-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #333; }
         .code-panel h3 { padding: 8px 12px; background: #0f3460; color: #fff; font-size: 11pt; }
         .code-panel textarea { flex: 1; background: #1e1e1e; color: #d4d4d4; border: none; padding: 12px; font-family: "Courier New", monospace; font-size: 12pt; resize: none; outline: none; }
@@ -41,17 +48,20 @@
 <body>
     <div class="topbar">
         <div class="topbar-left">
-            <button class="btn btn-back" id="btn-back">← Назад к отчёту</button>
+            <button class="btn btn-back" id="btn-back">← К отчёту</button>
             <span id="diagram-title">Диаграмма #0</span>
+            <span class="status-dot" id="status-dot"></span>
         </div>
         <div class="topbar-right">
-            <button class="btn btn-mode" id="btn-toggle-mode" onclick="toggleMode()">📝 Код</button>
-            <button class="btn btn-export" onclick="exportSVG()">📥 Экспорт SVG</button>
-            <button class="btn btn-save" onclick="saveDiagram()">💾 Сохранить</button>
+            <button class="btn btn-mode active" id="btn-toggle-mode" onclick="toggleMode()">📝 Код</button>
+            <button class="btn btn-export" onclick="exportPNG()">📥 PNG</button>
+            <button class="btn btn-export" onclick="exportSVG()">📥 SVG</button>
+            <button class="btn btn-save" id="btn-save" onclick="saveDiagram()">💾 Сохранить</button>
         </div>
     </div>
     <div class="main-area">
         <div id="visual-editor">
+            <div class="load-overlay" id="load-overlay"><div class="spinner"></div><div id="load-text">Загрузка Excalidraw…</div></div>
             <div id="excalidraw-container"></div>
         </div>
         <div id="code-editor">
@@ -67,61 +77,184 @@
         </div>
     </div>
     <div class="toast" id="toast"></div>
+
+    <!-- React + ReactDOM + Excalidraw (UMD) с CDN-фолбэками -->
+    <script>
+        // Загружаем скрипты последовательно с фолбэком unpkg → jsdelivr
+        function loadScript(urls) {
+            return new Promise((resolve, reject) => {
+                let i = 0;
+                function tryNext() {
+                    if (i >= urls.length) { reject(new Error("Все CDN недоступны: " + urls.join(", "))); return; }
+                    const s = document.createElement("script");
+                    s.src = urls[i++];
+                    s.onload = () => resolve(s.src);
+                    s.onerror = () => { s.remove(); tryNext(); };
+                    document.head.appendChild(s);
+                }
+                tryNext();
+            });
+        }
+        window.__cdnReady = (async () => {
+            try {
+                await loadScript(["https://unpkg.com/react@18.2.0/umd/react.production.min.js",
+                                  "https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"]);
+                await loadScript(["https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js",
+                                  "https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"]);
+                await loadScript(["https://unpkg.com/@excalidraw/excalidraw@0.17.6/dist/excalidraw.production.min.js",
+                                  "https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@0.17.6/dist/excalidraw.production.min.js"]);
+                // mermaid-to-excalidraw (ESM) с фолбэком
+                const cdns = ["https://cdn.jsdelivr.net/npm/@excalidraw/mermaid-to-excalidraw@2.2.2/+esm",
+                              "https://esm.sh/@excalidraw/mermaid-to-excalidraw@2.2.2"];
+                for (const url of cdns) {
+                    try {
+                        const m = await import(url);
+                        window.__parseMermaid = m.parseMermaidToExcalidraw;
+                        break;
+                    } catch (e) { /* следующий CDN */ }
+                }
+                return true;
+            } catch (e) {
+                console.error("CDN load failed:", e);
+                return false;
+            }
+        })();
+    </script>
+
     <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
     <script>
         let blockId = 0;
         let currentCode = "";
-        let excalidrawData = null;
+        let savedPng = null;          // PNG от предыдущего сохранения (для статуса)
         let isCodeMode = false;
-        let SESSION_ID = "";  // "ses-XXXX"
+        let SESSION_ID = "";
+        let excalidrawAPI = null;      // API Excalidraw
+        let excalReady = false;        // Excalidraw загружен и смонтирован
+        let dirty = false;             // Есть несохранённые правки
+
+        // ── Сессия из URL ────────────────────────────────────
 
         function detectSession() {
-            const path = window.location.pathname;
-            // URL: /ses-XXXX/diagram/N
-            const m = path.match(/^\/ses-([a-f0-9]+)/);
-            if (m) SESSION_ID = `ses-${m[1]}`;
-            const parts = path.split("/");
+            const m = window.location.pathname.match(/^\/ses-([a-f0-9]+)/);
+            if (m) SESSION_ID = "ses-" + m[1];
+            const parts = window.location.pathname.split("/");
             blockId = parseInt(parts[parts.length - 1]) || 0;
         }
 
+        // ── Инициализация ────────────────────────────────────
+
         async function init() {
             detectSession();
-            document.getElementById("diagram-title").textContent = `Диаграмма #${blockId}`;
+            document.getElementById("diagram-title").textContent = "Диаграмма #" + blockId;
             document.getElementById("btn-back").onclick = () => {
-                window.location.href = `/ses-${SESSION_ID.slice(4)}/`;
+                if (dirty && !confirm("Есть несохранённые изменения. Всё равно уйти?")) return;
+                window.location.href = "/ses-" + SESSION_ID.slice(4) + "/";
             };
+            window.addEventListener("beforeunload", (e) => {
+                if (dirty) { e.preventDefault(); e.returnValue = ""; }
+            });
 
             try {
                 const resp = await fetch(`/api/${SESSION_ID}/diagram/${blockId}`);
                 if (!resp.ok) throw new Error("Диаграмма не найдена");
                 const data = await resp.json();
                 currentCode = data.code || "";
-                excalidrawData = data.excalidraw_data;
+                savedPng = data.png_base64 || null;
+
                 document.getElementById("mermaid-code").value = currentCode;
                 mermaid.initialize({ startOnLoad: false, theme: "default" });
-                previewMermaid();
-                loadExcalidraw();
+
+                // Монтируем Excalidraw
+                const cdnOk = await window.__cdnReady;
+                if (cdnOk && window.ExcalidrawLib) {
+                    await mountExcalidraw(data.excalidraw_data, currentCode);
+                } else {
+                    document.getElementById("load-overlay").innerHTML =
+                        "<div style='padding:20px;text-align:center'>⚠ CDN недоступен.<br>Визуальный режим отключён — используйте режим «Код».</div>";
+                    setTimeout(() => switchToCodeMode(true), 500);
+                }
             } catch (e) {
-                showToast(`Ошибка: ${e.message}`, "error");
+                document.getElementById("load-text").textContent = "Ошибка: " + e.message;
+                showToast("Ошибка: " + e.message, "error");
             }
         }
 
-        async function loadExcalidraw() {
-            const c = document.getElementById("excalidraw-container");
-            c.innerHTML = '<div style="display:flex;height:100%"><div style="flex:1;padding:20px;background:#fff;overflow:auto;text-align:center"><div id="visual-mermaid-preview"></div></div></div>';
-            renderVisualPreview();
+        // ── Монтирование Excalidraw ──────────────────────────
+
+        async function buildInitialScene(excalidrawData, code) {
+            // 1) Сохранённая сцена → восстанавливаем как есть
+            if (excalidrawData && excalidrawData.elements) {
+                return {
+                    elements: excalidrawData.elements,
+                    files: excalidrawData.files || {},
+                    appState: { viewBackgroundColor: "#ffffff" },
+                };
+            }
+            // 2) Mermaid-код → конвертация в элементы Excalidraw
+            if (code && code.trim() && window.__parseMermaid) {
+                try {
+                    const { elements, files } = await window.__parseMermaid(code);
+                    const converted = ExcalidrawLib.convertToExcalidrawElements(elements);
+                    return {
+                        elements: converted,
+                        files: files || {},
+                        appState: { viewBackgroundColor: "#ffffff" },
+                    };
+                } catch (e) {
+                    console.warn("mermaid→excalidraw не поддерживает этот тип:", e);
+                    throw new Error("Визуальный режим не поддерживает этот тип диаграммы. Используйте режим «Код».");
+                }
+            }
+            // 3) Пустая сцена
+            return { elements: [], files: {}, appState: { viewBackgroundColor: "#ffffff" } };
         }
 
-        async function renderVisualPreview() {
-            const el = document.getElementById("visual-mermaid-preview");
-            if (!el || !currentCode) return;
+        async function mountExcalidraw(excalidrawData, code) {
+            let scene;
             try {
-                const { svg } = await mermaid.render(`mv-${Date.now()}`, currentCode);
-                el.innerHTML = svg;
+                scene = await buildInitialScene(excalidrawData, code);
             } catch (e) {
-                el.innerHTML = `<p style="color:red;padding:20px">Ошибка:<br>${e.message}</p>`;
+                document.getElementById("load-overlay").innerHTML =
+                    "<div style='padding:20px;text-align:center;max-width:400px'>⚠ " + e.message + "</div>";
+                setTimeout(() => switchToCodeMode(true), 1500);
+                return;
+            }
+
+            const container = document.getElementById("excalidraw-container");
+            const { Excalidraw } = ExcalidrawLib;
+
+            excalidrawAPI = null;
+            ReactDOM.createRoot(container).render(
+                React.createElement(Excalidraw, {
+                    initialData: scene,
+                    excalidrawAPI: (api) => { excalidrawAPI = api; },
+                    onChange: () => { dirty = true; },
+                    langCode: "ru",
+                    UIOptions: { canvasActions: { loadScene: false, saveToActiveFile: false, export: false, saveAsImage: false, clearCanvas: true } },
+                })
+            );
+
+            // Ждём пока API станет доступен
+            const deadline = Date.now() + 10000;
+            while (!excalidrawAPI && Date.now() < deadline) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+            if (excalidrawAPI) {
+                excalReady = true;
+                document.getElementById("load-overlay").style.display = "none";
+                document.getElementById("status-dot").textContent = "● визуальный режим";
+                document.getElementById("status-dot").className = "status-dot ok";
+            } else {
+                throw new Error("Excalidraw не инициализировался");
             }
         }
+
+        function switchToCodeMode(auto) {
+            if (!isCodeMode) toggleMode();
+            if (auto) showToast("Переключено в режим кода", "success");
+        }
+
+        // ── Режимы ───────────────────────────────────────────
 
         function toggleMode() {
             isCodeMode = !isCodeMode;
@@ -129,65 +262,183 @@
             if (isCodeMode) {
                 document.getElementById("visual-editor").classList.add("hidden");
                 document.getElementById("code-editor").classList.add("active");
-                btn.textContent = "🎨 Визуальный"; btn.classList.add("active");
+                btn.textContent = "🎨 Визуальный";
+                btn.classList.remove("active");
                 previewMermaid();
             } else {
+                if (!excalReady) {
+                    showToast("Визуальный режим недоступен (CDN)", "error");
+                    isCodeMode = false;
+                    return;
+                }
                 document.getElementById("visual-editor").classList.remove("hidden");
                 document.getElementById("code-editor").classList.remove("active");
-                btn.textContent = "📝 Код"; btn.classList.remove("active");
-                renderVisualPreview();
+                btn.textContent = "📝 Код";
+                btn.classList.add("active");
             }
         }
 
         async function previewMermaid() {
             const code = document.getElementById("mermaid-code").value;
             const el = document.getElementById("mermaid-preview");
-            if (!code.trim()) { el.innerHTML = "<p style='color:#999'>Введите mermaid-код</p>"; return; }
+            if (!code.trim()) { el.innerHTML = "<p>Введите mermaid-код</p>"; return; }
             try {
-                const { svg } = await mermaid.render(`mc-${Date.now()}`, code);
+                const { svg } = await mermaid.render("mc-" + Date.now(), code);
                 el.innerHTML = svg;
             } catch (e) {
-                el.innerHTML = `<p style="color:red">Ошибка: ${e.message}</p>`;
+                el.innerHTML = "<p>Ошибка: " + e.message + "</p>";
             }
         }
 
+        // ── Экспорт сцены ─────────────────────────────────────
+
+        function getScene() {
+            const elements = excalidrawAPI.getSceneElementsIncludingDeleted().filter(e => !e.isDeleted);
+            const appState = excalidrawAPI.getAppState();
+            const files = excalidrawAPI.getFiles();
+            const state = Object.assign({}, appState, { exportBackground: true });
+            return { elements, appState: state, files };
+        }
+
+        async function sceneToBlob() {
+            if (!excalReady || !excalidrawAPI) throw new Error("Excalidraw не готов");
+            const s = getScene();
+            return await ExcalidrawLib.exportToBlob({
+                elements: s.elements,
+                appState: s.appState,
+                files: s.files,
+                mimeType: "image/png",
+                exportPadding: 16,
+                getDimensions: function() { return { scale: 2 }; },
+            });
+        }
+
+        async function sceneToSvgString() {
+            if (!excalReady || !excalidrawAPI) throw new Error("Excalidraw не готов");
+            const s = getScene();
+            const svg = await ExcalidrawLib.exportToSvg({
+                elements: s.elements,
+                appState: s.appState,
+                files: s.files,
+                exportPadding: 16,
+            });
+            return new XMLSerializer().serializeToString(svg);
+        }
+
+        function blobToBase64(blob) {
+            return new Promise(function(resolve, reject) {
+                const r = new FileReader();
+                r.onload = function() { resolve(r.result.split(",")[1]); };
+                r.onerror = reject;
+                r.readAsDataURL(blob);
+            });
+        }
+
+        // ── Сохранение ───────────────────────────────────────
+
         async function saveDiagram() {
-            if (isCodeMode) currentCode = document.getElementById("mermaid-code").value;
+            const btn = document.getElementById("btn-save");
+            btn.disabled = true;
             try {
-                const resp = await fetch(`/api/${SESSION_ID}/diagram/${blockId}`, {
+                let payload = {};
+
+                if (isCodeMode) {
+                    currentCode = document.getElementById("mermaid-code").value;
+                    payload = { code: currentCode };
+                    showToast("Код сохранён. Визуальная версия сброшена.", "success");
+                } else if (excalReady) {
+                    const blob = await sceneToBlob();
+                    const pngBase64 = await blobToBase64(blob);
+                    payload = {
+                        code: currentCode,
+                        excalidraw_data: {
+                            type: "excalidraw/clipboard",
+                            elements: getScene().elements,
+                            files: getScene().files,
+                        },
+                        png_base64: pngBase64,
+                    };
+                    savedPng = pngBase64;
+                    showToast("Диаграмма сохранена (визуальная версия)", "success");
+                } else {
+                    showToast("Нечего сохранять", "error");
+                    return;
+                }
+
+                const resp = await fetch("/api/" + SESSION_ID + "/diagram/" + blockId, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code: currentCode, excalidraw_data: excalidrawData }),
+                    body: JSON.stringify(payload),
                 });
-                if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || "Ошибка"); }
-                showToast("✅ Диаграмма сохранена", "success");
-                renderVisualPreview();
-            } catch (e) { showToast(`❌ ${e.message}`, "error"); }
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.error || "Ошибка сохранения");
+                }
+                dirty = false;
+            } catch (e) {
+                showToast("❌ " + e.message, "error");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ── Скачивание PNG/SVG ────────────────────────────────
+
+        async function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportPNG() {
+            try {
+                if (!isCodeMode && excalReady) {
+                    await downloadBlob(await sceneToBlob(), "diagram-" + blockId + ".png");
+                    showToast("✅ PNG скачан", "success");
+                } else {
+                    const resp = await fetch("/api/" + SESSION_ID + "/diagram/" + blockId + "/export", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ code: document.getElementById("mermaid-code").value, format: "png" }),
+                    });
+                    if (!resp.ok) throw new Error("Ошибка экспорта");
+                    await downloadBlob(await resp.blob(), "diagram-" + blockId + ".png");
+                    showToast("✅ PNG скачан (mermaid)", "success");
+                }
+            } catch (e) { showToast("❌ " + e.message, "error"); }
         }
 
         async function exportSVG() {
             try {
-                const code = isCodeMode ? document.getElementById("mermaid-code").value : currentCode;
-                const resp = await fetch(`/api/${SESSION_ID}/diagram/${blockId}/export`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code, format: "svg" }),
-                });
-                if (!resp.ok) throw new Error("Ошибка экспорта");
-                const blob = await resp.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url; a.download = `diagram-${blockId}.svg`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showToast("✅ SVG скачан", "success");
-            } catch (e) { showToast(`❌ ${e.message}`, "error"); }
+                if (!isCodeMode && excalReady) {
+                    const svgStr = await sceneToSvgString();
+                    await downloadBlob(new Blob([svgStr], { type: "image/svg+xml" }), "diagram-" + blockId + ".svg");
+                    showToast("✅ SVG скачан", "success");
+                } else {
+                    const resp = await fetch("/api/" + SESSION_ID + "/diagram/" + blockId + "/export", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ code: document.getElementById("mermaid-code").value, format: "svg" }),
+                    });
+                    if (!resp.ok) throw new Error("Ошибка экспорта");
+                    await downloadBlob(await resp.blob(), "diagram-" + blockId + ".svg");
+                    showToast("✅ SVG скачан (mermaid)", "success");
+                }
+            } catch (e) { showToast("❌ " + e.message, "error"); }
         }
 
-        function showToast(msg, type = "success") {
+        // ── Горячие клавиши / Toast ───────────────────────────
+
+        document.addEventListener("keydown", function(e) {
+            if (e.ctrlKey && e.key === "s") { e.preventDefault(); saveDiagram(); }
+        });
+
+        function showToast(msg, type) {
             const t = document.getElementById("toast");
-            t.textContent = msg; t.className = `toast ${type}`; t.style.display = "block";
-            setTimeout(() => { t.style.display = "none"; }, 3000);
+            t.textContent = msg; t.className = "toast " + (type || "success"); t.style.display = "block";
+            setTimeout(function() { t.style.display = "none"; }, 3000);
         }
 
         document.addEventListener("DOMContentLoaded", init);

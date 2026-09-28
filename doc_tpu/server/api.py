@@ -111,6 +111,11 @@ def export_docx(session_id):
 
     try:
         content = load_content(str(content_path))
+
+        # Прикрепляем PNG отредактированных диаграмм (Excalidraw)
+        from ..diagrams import attach_png_to_blocks
+        attach_png_to_blocks(content, sd)
+
         report_data = None
         if static_path.exists():
             report_data = load_report(str(static_path))
@@ -160,6 +165,22 @@ def render_mermaid():
 
 # ── Диаграммы ────────────────────────────────────────────────
 
+@api_bp.route("/api/<session_id>/diagrams")
+def get_diagrams_map(session_id):
+    """Карта PNG отредактированных диаграмм (для превью в блоках)."""
+    sd = _session_dir(session_id)
+    if not sd:
+        return jsonify({"error": "Сессия не найдена"}), 404
+
+    from ..diagrams import load_diagrams
+    diagrams = load_diagrams(sd)
+    return jsonify({
+        idx: {"png_base64": entry.get("png_base64")}
+        for idx, entry in diagrams.items()
+        if entry.get("png_base64")
+    })
+
+
 @api_bp.route("/api/<session_id>/diagram/<int:block_id>")
 def get_diagram(session_id, block_id):
     sd = _session_dir(session_id)
@@ -167,6 +188,7 @@ def get_diagram(session_id, block_id):
         return jsonify({"error": "Сессия не найдена"}), 404
 
     from ..content import load_content
+    from ..diagrams import load_diagrams
 
     path = sd / "content.md"
     if not path.exists():
@@ -180,10 +202,12 @@ def get_diagram(session_id, block_id):
         for block in blocks:
             if block.get("type") == "mermaid":
                 if mermaid_idx == block_id:
+                    sidecar = load_diagrams(sd).get(str(block_id), {})
                     return jsonify({
                         "block_id": block_id,
                         "code": block.get("code", ""),
-                        "excalidraw_data": block.get("excalidraw_data"),
+                        "excalidraw_data": sidecar.get("excalidraw_data"),
+                        "png_base64": sidecar.get("png_base64"),
                     })
                 mermaid_idx += 1
 
@@ -199,10 +223,12 @@ def save_diagram(session_id, block_id):
         return jsonify({"error": "Сессия не найдена"}), 404
 
     from ..content import load_content, blocks_to_markdown
+    from ..diagrams import load_diagrams, save_diagrams
 
     data = request.json
     code = data.get("code", "")
     excalidraw_data = data.get("excalidraw_data")
+    png_base64 = data.get("png_base64")
 
     path = sd / "content.md"
     if not path.exists():
@@ -217,18 +243,36 @@ def save_diagram(session_id, block_id):
         for block in blocks:
             if block.get("type") == "mermaid":
                 if mermaid_idx == block_id:
-                    block["code"] = code
-                    if excalidraw_data:
-                        block["excalidraw_data"] = excalidraw_data
                     found = True
-                    break
+                    # Обновляем mermaid-код только если он передан
+                    # и не является визуальной правкой (без excalidraw_data)
+                    if code and not excalidraw_data:
+                        block["code"] = code
                 mermaid_idx += 1
 
         if not found:
             return jsonify({"error": f"Диаграмма {block_id} не найдена"}), 404
 
+        # Сохраняем content.md (если код менялся)
         md_text = blocks_to_markdown(blocks)
         (sd / "content.md").write_text(md_text, encoding="utf-8")
+
+        # Сохраняем sidecar (сцена Excalidraw + PNG)
+        diagrams = load_diagrams(sd)
+        if excalidraw_data or png_base64:
+            # Визуальное сохранение: обновляем/создаём запись
+            entry = diagrams.get(str(block_id), {})
+            if excalidraw_data:
+                entry["excalidraw_data"] = excalidraw_data
+            if png_base64:
+                entry["png_base64"] = png_base64
+            diagrams[str(block_id)] = entry
+            save_diagrams(sd, diagrams)
+        elif str(block_id) in diagrams:
+            # Code-сохранение: сбрасываем устаревшую визуальную сцену
+            diagrams.pop(str(block_id), None)
+            save_diagrams(sd, diagrams)
+
         return jsonify({"status": "ok"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -236,12 +280,23 @@ def save_diagram(session_id, block_id):
 
 @api_bp.route("/api/<session_id>/diagram/<int:block_id>/export", methods=["POST"])
 def export_diagram(session_id, block_id):
-    """Экспорт диаграммы как SVG (не зависит от данных сессии)."""
+    """Экспорт диаграммы: сначала сохранённый PNG (Excalidraw), затем mermaid.ink."""
     import base64
     import urllib.request
 
-    code = request.json.get("code", "")
     fmt = request.json.get("format", "svg")
+
+    # 1) Сохранённый PNG из визуального редактора
+    sd = _session_dir(session_id)
+    if sd:
+        from ..diagrams import load_diagrams
+        entry = load_diagrams(sd).get(str(block_id), {})
+        if entry.get("png_base64"):
+            png_bytes = base64.b64decode(entry["png_base64"])
+            return png_bytes, 200, {"Content-Type": "image/png"}
+
+    # 2) Fallback: mermaid.ink
+    code = request.json.get("code", "")
     if not code:
         return jsonify({"error": "Пустой код"}), 400
 

@@ -87,7 +87,7 @@ def sync_session_to_report(session_id: str) -> bool:
     session_path = Path(session["session_dir"])
     if not session_path.exists():
         return False
-    for name in ["content.md", "static.json"]:
+    for name in ["content.md", "static.json", "diagrams.json"]:
         src = session_path / name
         if src.exists():
             shutil.copy2(src, report_path / name)

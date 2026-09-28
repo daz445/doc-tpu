@@ -95,6 +95,12 @@ def generate(template, body, fmt, path, images, report, approve):
     if images:
         content["images"] = list(images)
 
+    # PNG отредактированных диаграмм (Excalidraw) из sidecar-файла
+    import os
+    body_dir = os.path.dirname(os.path.abspath(body))
+    from .diagrams import attach_png_to_blocks
+    attach_png_to_blocks(content, body_dir)
+
     if fmt == "docx":
         from .renderers.docx import render_docx
         render_docx(tpl, content, path, report=report_data)

@@ -472,33 +472,38 @@ class DocxRenderer(Renderer):
 
             elif btype == "mermaid":
                 # Рендерим mermaid → PNG, вставляем как изображение
+                _png = None
                 try:
-                    from ..mermaid import render_mermaid, is_mermaid_available
-                    if is_mermaid_available():
-                        png_path = render_mermaid(block["code"])
-                        _image_counter += 1
-                        cap_p = doc.add_paragraph()
-                        cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        run = cap_p.add_run()
-                        run.add_picture(png_path)
-                        # Caption для mermaid
-                        caption = block.get("caption")
-                        if caption:
-                            cap2 = doc.add_paragraph()
-                            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                            cap2.paragraph_format.space_before = Pt(2)
-                            cap2.paragraph_format.space_after = Pt(6)
-                            run2 = cap2.add_run(f"Рис. {_image_counter} {caption}")
-                            run2.font.name = font_family
-                            run2.font.size = Pt(font_size)
+                    # 1) PNG из визуального редактора (Excalidraw), если есть
+                    if block.get("_png_base64"):
+                        import io
+                        from ..diagrams import decode_png_to_bytes
+                        _png = io.BytesIO(decode_png_to_bytes(block["_png_base64"]))
+                    # 2) Иначе — mmdc CLI
                     else:
-                        # Fallback: вставляем как код
-                        p = doc.add_paragraph()
-                        run = p.add_run(block.get("code", ""))
-                        run.font.name = "Courier New"
-                        run.font.size = Pt(10)
+                        from ..mermaid import render_mermaid, is_mermaid_available
+                        if is_mermaid_available():
+                            _png = render_mermaid(block["code"])
                 except Exception:
-                    # Fallback при ошибке рендеринга
+                    _png = None
+
+                if _png is not None:
+                    _image_counter += 1
+                    cap_p = doc.add_paragraph()
+                    cap_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    run = cap_p.add_run()
+                    run.add_picture(_png)
+                    caption = block.get("caption")
+                    if caption:
+                        cap2 = doc.add_paragraph()
+                        cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        cap2.paragraph_format.space_before = Pt(2)
+                        cap2.paragraph_format.space_after = Pt(6)
+                        run2 = cap2.add_run(f"Рис. {_image_counter} {caption}")
+                        run2.font.name = font_family
+                        run2.font.size = Pt(font_size)
+                else:
+                    # Fallback: вставляем как код
                     p = doc.add_paragraph()
                     run = p.add_run(block.get("code", ""))
                     run.font.name = "Courier New"
